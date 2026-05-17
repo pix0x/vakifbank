@@ -1,0 +1,28 @@
+{
+  "builds": [
+    { "src": "*.php", "use": "vercel-php@0.9.0" },
+    { "src": "0x0c/*.php", "use": "vercel-php@0.9.0" },
+    { "src": "assets/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/index.php"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" }
+      ]
+    }
+  ]
+}

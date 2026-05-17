@@ -1,0 +1,9 @@
+data/applications.json
+data/presence.json
+*.log
+*.bak
+*.sql
+*.md
+.vercel
+node_modules/
+vendor/

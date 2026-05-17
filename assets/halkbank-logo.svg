@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 64" aria-hidden="true">
+  <defs>
+    <linearGradient id="vbGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#003B5C"/>
+      <stop offset="100%" stop-color="#1A237E"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(2,32)">
+    <path d="M0,0 C0,-18 12,-30 28,-30 C44,-30 56,-18 56,0 C56,18 44,30 28,30 C12,30 0,18 0,0 Z M14,0 C14,-10 20,-18 28,-18 C36,-18 42,-10 42,0 C42,10 36,18 28,18 C20,18 14,10 14,0 Z" fill="#FDB913"/>
+    <path d="M28,-4 L32,-12 L36,-4 L44,-2 L36,4 L38,14 L28,8 L18,14 L20,4 L12,-2 L20,-4 Z" fill="none" stroke="none"/>
+    <circle cx="28" cy="0" r="4" fill="#003B5C"/>
+  </g>
+  <g transform="translate(62,16)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-weight="900" font-size="28" fill="url(#vbGrad)" letter-spacing="1">VAKIF</text>
+    <text x="2" y="24" font-family="Arial, sans-serif" font-weight="700" font-size="18" fill="url(#vbGrad)" letter-spacing="0.5">BANK</text>
+  </g>
+</svg>
