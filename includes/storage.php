@@ -61,7 +61,7 @@ function resolveClientIp(): string
 
 // --- JSON File Operations ---
 
-function acquireLock(string $file): ?resource
+function acquireLock(string $file)
 {
     $dir = dirname($file);
     if (!is_dir($dir)) @mkdir($dir, 0777, true);
@@ -71,10 +71,12 @@ function acquireLock(string $file): ?resource
     return $fh;
 }
 
-function releaseLock(resource $fh): void
+function releaseLock($fh): void
 {
-    flock($fh, LOCK_UN);
-    fclose($fh);
+    if ($fh) {
+        @flock($fh, LOCK_UN);
+        @fclose($fh);
+    }
 }
 
 function loadApplications(): array
