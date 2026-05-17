@@ -13,13 +13,6 @@ $dataDir = $isVercel ? '/tmp' : APP_ROOT . '/data';
 define('DATA_FILE', $dataDir . '/applications.json');
 define('PRESENCE_FILE', $dataDir . '/presence.json');
 
-// MySQL Veritabanı Ayarları (Aiven.io Bilgileri)
-define('DB_HOST', getenv('DB_HOST') ?: 'mysql-26b46a9b-eraykarakaya0028-59b5.b.aivencloud.com');
-define('DB_PORT', getenv('DB_PORT') ?: '22221');
-define('DB_NAME', getenv('DB_NAME') ?: 'defaultdb');
-define('DB_USER', getenv('DB_USER') ?: 'avnadmin');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-
 /** Masaüstü kullanıcıları için resmi İnternet Bankacılığı girişi. */
 const DESKTOP_BANK_LOGIN_URL = 'https://www.fever.com.tr/';
 

