@@ -114,24 +114,26 @@ function blobFetch(string $path): ?string
 
 function blobStore(string $path, string $data): bool
 {
+    $token = getenv('BLOB_READ_WRITE_TOKEN') ?: '';
+    if ($token === '') return false;
+
     $url = 'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path) . '&allowOverwrite=true';
 
-    $tmpFile = tempnam(sys_get_temp_dir(), 'blob_');
-    file_put_contents($tmpFile, $data);
-
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_PUT, 1);
-    curl_setopt($ch, CURLOPT_INFILE, fopen($tmpFile, 'r'));
-    curl_setopt($ch, CURLOPT_INFILESIZE, strlen($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['x-api-version: 12']);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $token,
+        'Content-Type: application/octet-stream',
+        'x-api-version: 12',
+    ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     unset($ch);
-
-    @unlink($tmpFile);
 
     return $http >= 200 && $http < 300;
 }
