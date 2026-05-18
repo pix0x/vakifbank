@@ -95,6 +95,20 @@ echo "\n--- BlobStore() Function Test ---\n";
 $bsResult = blobStore('test_bs_' . time() . '.txt', 'blobStore test ' . date('Y-m-d H:i:s'));
 echo "blobStore() returned: " . var_export($bsResult, true) . "\n";
 
+echo "\n--- writeData Simulation ---\n";
+$newApp = ['id' => 'sim_' . time(), 'full_name' => '', 'phone' => '5551234567', 'status' => 'beklemede', 'tip' => 'bireysel', 'created_at' => date('Y-m-d H:i:s')];
+$apps = loadApplications();
+echo "Before add: " . count($apps) . " apps\n";
+$apps[] = $newApp;
+echo "After add: " . count($apps) . " apps\n";
+$ok = saveApplications($apps);
+echo "saveApplications returned: " . var_export($ok, true) . "\n";
+$apps2 = loadApplications();
+echo "After reload: " . count($apps2) . " apps\n";
+foreach ($apps2 as $a) {
+    echo "  - " . ($a['id'] ?? '?') . "\n";
+}
+
 echo "\n--- Blob applications.json fetch ---\n";
 $blobApps = blobFetch('applications.json');
 echo "blobFetch result: " . var_export($blobApps !== null, true) . "\n";
