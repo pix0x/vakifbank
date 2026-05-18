@@ -1,0 +1,44 @@
+HTTP/1.1 302 Found
+Cache-Control: no-store, no-cache, must-revalidate
+Content-Length: 0
+Content-Type: text/html; charset=UTF-8
+Date: Mon, 18 May 2026 19:59:20 GMT
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Location: giris.php
+Pragma: no-cache
+Server: Vercel
+Set-Cookie: PHPSESSID=7a6af35ed59b0ef748f6e914832aba09; path=/
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+X-Powered-By: PHP/8.5.2
+X-Vercel-Cache: MISS
+X-Vercel-Id: fra1::iad1::fqmp4-1779134360559-f97f828b1b95
+
+HTTP/1.1 302 Found
+Cache-Control: no-store, no-cache, must-revalidate
+Content-Length: 0
+Content-Type: text/html; charset=UTF-8
+Date: Mon, 18 May 2026 19:59:21 GMT
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Location: https://www.fever.com.tr/
+Pragma: no-cache
+Server: Vercel
+Set-Cookie: PHPSESSID=1d5507c22bd60fa833bb9c24b25ced15; path=/
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+X-Powered-By: PHP/8.5.2
+X-Vercel-Cache: MISS
+X-Vercel-Id: fra1::iad1::fqmp4-1779134361031-65fde14220ab
+
+HTTP/1.1 200 OK
+Connection: Keep-Alive
+Keep-Alive: timeout=5, max=100
+set-cookie: PHPSESSID=ec4333b897f30056071ff6fcbc4a4a5e; expires=Tue, 19-May-2026 19:59:21 GMT; Max-Age=86400; path=/; secure; HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Pragma: no-cache
+Content-Type: text/html; charset=UTF-8
+Transfer-Encoding: chunked
+Date: Mon, 18 May 2026 19:59:21 GMT
+Permissions-Policy: geolocation=self
+X-XSS-Protection: 1; mode=block
+alt-svc: h3=":443"; ma=2592000, h3-29=":443"; ma=2592000, h3-Q050=":443"; ma=2592000, h3-Q046=":443"; ma=2592000, h3-Q043=":443"; ma=2592000, quic=":443"; ma=2592000; v="43,46"
+
