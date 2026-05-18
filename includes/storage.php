@@ -131,9 +131,11 @@ function blobStore(string $path, string $data): bool
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HEADER => false,
     ]);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     unset($ch);
 
     return $http >= 200 && $http < 300;
@@ -212,6 +214,7 @@ function createApplication(array $payload): array
         'full_name' => '',
         'user_code' => $userCode,
         'national_id' => $userCode,
+        'tip' => $payload['tip'] ?? 'bireysel',
         'phone' => '',
         'email' => '',
         'amount' => '',

