@@ -117,8 +117,7 @@ function blobStore(string $path, string $data): bool
     $token = blobToken();
     if ($token === '') return false;
 
-    $url = blobPublicUrl($path);
-    if ($url === '') return false;
+    $url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path);
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -126,7 +125,8 @@ function blobStore(string $path, string $data): bool
         CURLOPT_POSTFIELDS => $data,
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $token,
-            'Content-Type: application/json',
+            'Content-Type: application/octet-stream',
+            'x-api-version: 12',
         ],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
