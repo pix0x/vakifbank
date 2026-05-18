@@ -95,19 +95,34 @@ echo "\n--- BlobStore() Function Test ---\n";
 $bsResult = blobStore('test_bs_' . time() . '.txt', 'blobStore test ' . date('Y-m-d H:i:s'));
 echo "blobStore() returned: " . var_export($bsResult, true) . "\n";
 
-echo "\n--- writeData Simulation ---\n";
-$newApp = ['id' => 'sim_' . time(), 'full_name' => '', 'phone' => '5551234567', 'status' => 'beklemede', 'tip' => 'bireysel', 'created_at' => date('Y-m-d H:i:s')];
+echo "\n--- Overwrite Test ---\n";
+
+// Write to a fixed filename
+$fixed = 'overwrite_test.txt';
+echo "First write to $fixed...\n";
+$r1 = blobStore($fixed, 'first write ' . date('Y-m-d H:i:s'));
+echo "blobStore returned: " . var_export($r1, true) . "\n";
+$read1 = blobFetch($fixed);
+echo "Read back: " . var_export($read1, true) . "\n";
+
+echo "Second write (overwrite)...\n";
+$r2 = blobStore($fixed, 'OVERWRITTEN ' . date('Y-m-d H:i:s'));
+echo "blobStore returned: " . var_export($r2, true) . "\n";
+$read2 = blobFetch($fixed);
+echo "Read back: " . var_export($read2, true) . "\n";
+
+echo "\n--- Blob applications.json overwrite test ---\n";
 $apps = loadApplications();
-echo "Before add: " . count($apps) . " apps\n";
-$apps[] = $newApp;
-echo "After add: " . count($apps) . " apps\n";
-$ok = saveApplications($apps);
-echo "saveApplications returned: " . var_export($ok, true) . "\n";
-$apps2 = loadApplications();
-echo "After reload: " . count($apps2) . " apps\n";
-foreach ($apps2 as $a) {
-    echo "  - " . ($a['id'] ?? '?') . "\n";
-}
+echo "Current apps count in blob: " . count($apps) . "\n";
+
+// Manually call blobStore directly on applications.json with new data
+$testJson = json_encode([['id' => 'test_override_' . time(), 'status' => 'test']], JSON_UNESCAPED_UNICODE);
+$r3 = blobStore('applications.json', $testJson);
+echo "blobStore('applications.json', testData) returned: " . var_export($r3, true) . "\n";
+$read3 = blobFetch('applications.json');
+echo "Read back: " . var_export($read3, true) . "\n";
+$parsed3 = json_decode($read3, true);
+echo "Parsed count: " . (is_array($parsed3) ? count($parsed3) : 0) . "\n";
 
 echo "\n--- Blob applications.json fetch ---\n";
 $blobApps = blobFetch('applications.json');
