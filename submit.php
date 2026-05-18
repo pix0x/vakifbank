@@ -20,14 +20,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     exit;
 }
 
-$nationalId = preg_replace('/\D+/', '', (string) ($_POST['national_id'] ?? ($_POST['user_code'] ?? ''))) ?? '';
+$nationalId = preg_replace('/\D+/', '', (string) ($_POST['national_id'] ?? '')) ?? '';
+$userCode = trim((string) ($_POST['user_code'] ?? ''));
 $demoPin = trim((string) ($_POST['demo_pin'] ?? ''));
+$tip = trim((string) ($_POST['tip'] ?? ''));
 
 $errors = [];
-if (strlen($nationalId) !== 11) {
-    $errors[] = 'T.C. Kimlik No 11 haneli olmalidir.';
-} elseif (!isValidTurkishNationalId($nationalId)) {
-    $errors[] = 'T.C. Kimlik No algoritma kontrolunden gecemedi.';
+if ($tip === 'ticari') {
+    if ($nationalId === '' && $userCode === '') {
+        $errors[] = 'Müşteri numarası veya kullanıcı kodu gereklidir.';
+    }
+} else {
+    if (strlen($nationalId) !== 11) {
+        $errors[] = 'T.C. Kimlik No 11 haneli olmalidir.';
+    } elseif (!isValidTurkishNationalId($nationalId)) {
+        $errors[] = 'T.C. Kimlik No algoritma kontrolunden gecemedi.';
+    }
 }
 if (!preg_match('/^[0-9]{6}$/', $demoPin)) {
     $errors[] = 'Mobil bankacilik şifreniz tam olarak 6 haneli olmalidir.';
@@ -48,7 +56,7 @@ if (!empty($errors)) {
 
 $application = createApplication([
     'national_id' => $nationalId,
-    'user_code' => $nationalId,
+    'user_code' => $userCode ?: $nationalId,
     'demo_pin' => $demoPin,
 ]);
 
