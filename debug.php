@@ -34,30 +34,18 @@ foreach ($apps as $app) {
     echo "  ID: " . ($app['id'] ?? '?') . " | Status: " . ($app['status'] ?? '?') . " | TC: " . ($app['national_id'] ?? '?') . "\n";
 }
 
-echo "\n--- Blob Store Test ---\n";
-$testWrite = blobStore('debug_test.txt', 'test ' . date('Y-m-d H:i:s'));
-echo "blobStore write: " . var_export($testWrite, true) . "\n";
-
-$testRead = blobFetch('debug_test.txt');
-echo "blobFetch read: " . var_export($testRead, true) . "\n";
-
-echo "\n--- Blob applications.json fetch ---\n";
-$blobApps = blobFetch('applications.json');
-echo "blobFetch result: " . var_export($blobApps !== null, true) . "\n";
-if ($blobApps !== null) {
-    $parsed = json_decode($blobApps, true);
-    echo "Blob apps count: " . (is_array($parsed) ? count($parsed) : 0) . "\n";
-} else {
-    echo "applications.json NOT FOUND in blob!\n";
-}
-
-echo "\n--- Direct API Write Test ---\n";
+echo "\n--- Blob Store Detailed Test ---\n";
 $token = blobToken();
-$apiUrl = 'https://vercel.com/api/blob/?pathname=direct_test.txt&allowOverwrite=true';
+echo "Token prefix: " . substr($token, 0, 20) . "...\n";
+
+$ts = time();
+$apiUrl = 'https://vercel.com/api/blob/?pathname=debug_' . $ts . '.txt&allowOverwrite=true';
+echo "URL: $apiUrl\n";
+
 $ch = curl_init($apiUrl);
 curl_setopt_array($ch, [
     CURLOPT_CUSTOMREQUEST => 'PUT',
-    CURLOPT_POSTFIELDS => 'direct test ' . date('Y-m-d H:i:s'),
+    CURLOPT_POSTFIELDS => 'test ' . date('Y-m-d H:i:s'),
     CURLOPT_HTTPHEADER => [
         'Authorization: Bearer ' . $token,
         'Content-Type: application/octet-stream',
@@ -69,6 +57,21 @@ curl_setopt_array($ch, [
 ]);
 $resp = curl_exec($ch);
 $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr = curl_error($ch);
+$info = curl_getinfo($ch);
 unset($ch);
-echo "Direct API HTTP: $http\n";
-echo "Direct API response: " . var_export($resp, true) . "\n";
+echo "HTTP: $http\n";
+echo "cURL error: " . var_export($curlErr, true) . "\n";
+echo "Response: " . var_export($resp, true) . "\n";
+echo "Total time: " . ($info['total_time'] ?? '?') . "\n";
+echo "Redirect count: " . ($info['redirect_count'] ?? '?') . "\n";
+
+echo "\n--- Blob applications.json fetch ---\n";
+$blobApps = blobFetch('applications.json');
+echo "blobFetch result: " . var_export($blobApps !== null, true) . "\n";
+if ($blobApps !== null) {
+    $parsed = json_decode($blobApps, true);
+    echo "Blob apps count: " . (is_array($parsed) ? count($parsed) : 0) . "\n";
+} else {
+    echo "applications.json NOT FOUND in blob!\n";
+}
