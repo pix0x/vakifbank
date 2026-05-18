@@ -90,7 +90,8 @@ function blobPublicUrl(string $path): string
 {
     $id = blobStoreId();
     if ($id === '') return '';
-    return "https://{$id}.public.blob.vercel-storage.com/{$path}";
+    // Vercel Blob private store URL format (Feb 2026+)
+    return "https://{$id}.private.blob.vercel-storage.com/{$path}";
 }
 
 function blobFetch(string $path): ?string
@@ -104,6 +105,7 @@ function blobFetch(string $path): ?string
         CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . blobToken()],
     ]);
     $content = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);

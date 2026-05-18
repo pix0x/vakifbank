@@ -8,3 +8,5 @@ data/presence.json
 current_domain.txt
 node_modules/
 vendor/
+
+.vercel
