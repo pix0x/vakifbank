@@ -67,32 +67,28 @@ function blobToken(): string
     return is_string($t) ? $t : '';
 }
 
-function blobFetch(string $path): ?string
+function blobStoreId(): string
 {
     $token = blobToken();
-    if ($token === '') return null;
+    if ($token === '') return '';
+    $parts = explode(':', $token, 2);
+    return $parts[0] ?? '';
+}
 
-    $ch = curl_init("https://api.vercel.com/v1/blob/list?prefix=" . urlencode($path));
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token],
-        CURLOPT_TIMEOUT => 10,
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($http < 200 || $http >= 300) return null;
+function blobPublicUrl(string $path): string
+{
+    $id = blobStoreId();
+    if ($id === '') return '';
+    return "https://{$id}.public.blob.vercel-storage.com/{$path}";
+}
 
-    $result = json_decode($resp, true);
-    foreach (($result['blobs'] ?? []) as $b) {
-        if (($b['pathname'] ?? '') === $path) {
-            $url = $b['url'] ?? '';
-            if ($url === '') continue;
-            $content = @file_get_contents($url);
-            if ($content !== false) return $content;
-        }
-    }
-    return null;
+function blobFetch(string $path): ?string
+{
+    $url = blobPublicUrl($path);
+    if ($url === '') return null;
+
+    $content = @file_get_contents($url);
+    return $content !== false ? $content : null;
 }
 
 function blobStore(string $path, string $data): bool
@@ -100,16 +96,17 @@ function blobStore(string $path, string $data): bool
     $token = blobToken();
     if ($token === '') return false;
 
-    $ch = curl_init("https://api.vercel.com/v1/blob/upload?path=" . urlencode($path) . "&addRandomSuffix=false");
+    $ch = curl_init("https://api.vercel.com/v1/blob/upload");
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => '{}',
+        CURLOPT_POSTFIELDS => json_encode(['path' => $path, 'addRandomSuffix' => false]),
         CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
     ]);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
     curl_close($ch);
     if ($http < 200 || $http >= 300) return false;
 
@@ -153,18 +150,17 @@ function writeData(string $file, array $data): bool
     $json = json_encode(array_values($data), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     if ($json === false) return false;
 
-    $ok = true;
+    $dir = dirname($file);
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    @file_put_contents($file, $json);
+
     $token = blobToken();
     if ($token !== '') {
         $name = basename($file);
-        if (!blobStore($name, $json)) $ok = false;
+        blobStore($name, $json);
     }
 
-    $dir = dirname($file);
-    if (!is_dir($dir)) @mkdir($dir, 0777, true);
-    if (@file_put_contents($file, $json) === false) $ok = false;
-
-    return $ok;
+    return true;
 }
 
 function loadApplications(): array
