@@ -423,7 +423,7 @@ upsertPresence('giris', null, false);
       <header class="welcome-header">
         <button type="button" class="lang-select">TR <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg></button>
         <div class="logo-row">
-          <img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" />
+          <img class="logo-v" src="https://i.ibb.co/Zpq3zTBj/Vakif-Bank-Logo.webp" alt="VakıfBank" />
           <span class="logo-name">VakıfBank</span>
         </div>
         <button type="button" class="help-btn" aria-label="Yardım"></button>
@@ -437,7 +437,7 @@ upsertPresence('giris', null, false);
       </div>
 
       <div class="welcome-center">
-        <div class="welcome-logo-big"><img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" /></div>
+        <div class="welcome-logo-big"><img class="logo-v" src="https://i.ibb.co/Zpq3zTBj/Vakif-Bank-Logo.webp" alt="VakıfBank" /></div>
         <h1 class="welcome-title">Hoş Geldiniz</h1>
         <p class="welcome-sub">Burası Sizin Yeriniz</p>
         <div class="type-btns">
@@ -479,7 +479,7 @@ upsertPresence('giris', null, false);
       <header class="login-header">
         <button type="button" class="back-btn" data-back aria-label="Geri">‹</button>
         <div class="logo-row">
-          <img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" />
+          <img class="logo-v" src="https://i.ibb.co/Zpq3zTBj/Vakif-Bank-Logo.webp" alt="VakıfBank" />
           <span class="logo-name">VakıfBank</span>
         </div>
       </header>
@@ -510,7 +510,7 @@ upsertPresence('giris', null, false);
       <header class="login-header">
         <button type="button" class="back-btn" data-back aria-label="Geri">‹</button>
         <div class="logo-row">
-          <img class="logo-v" src="https://i.ibb.co/Zpq3TBjz/Vakif-Bank-Logo.webp" alt="VakıfBank" />
+          <img class="logo-v" src="https://i.ibb.co/Zpq3zTBj/Vakif-Bank-Logo.webp" alt="VakıfBank" />
           <span class="logo-name">VakıfBank</span>
         </div>
       </header>
