@@ -117,7 +117,7 @@ function blobStore(string $path, string $data): bool
     $token = blobToken();
     if ($token === '') return false;
 
-    $url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path) . '&allowOverwrite=true';
+    $url = 'https://vercel.com/api/blob/upload?pathname=' . urlencode($path) . '&allowOverwrite=true';
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
@@ -130,6 +130,7 @@ function blobStore(string $path, string $data): bool
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErr = curl_error($ch);
