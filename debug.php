@@ -34,18 +34,24 @@ foreach ($apps as $app) {
     echo "  ID: " . ($app['id'] ?? '?') . " | Status: " . ($app['status'] ?? '?') . " | TC: " . ($app['national_id'] ?? '?') . "\n";
 }
 
-echo "\n--- Blob Store Detailed Test ---\n";
+echo "\n--- BlobStore() Function Test ---\n";
+$bsResult = blobStore('bs_test_' . time() . '.txt', 'blobStore test ' . date('Y-m-d H:i:s'));
+echo "blobStore() returned: " . var_export($bsResult, true) . "\n";
+echo "Now reading back: " . var_export(blobFetch('bs_test_*.txt'), true) . "\n";
+// Note: blobFetch doesn't support glob, so this might not work
+
+echo "\n--- Direct API Similar to writeData ---\n";
 $token = blobToken();
-echo "Token prefix: " . substr($token, 0, 20) . "...\n";
+$json = json_encode([['id' => 'test_'.time(), 'status' => 'beklemede']], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+echo "Data length: " . strlen($json) . "\n";
 
-$ts = time();
-$apiUrl = 'https://vercel.com/api/blob/?pathname=debug_' . $ts . '.txt&allowOverwrite=true';
-echo "URL: $apiUrl\n";
-
-$ch = curl_init($apiUrl);
+// Replicate blobStore exactly
+$path = 'write_test_' . time() . '.json';
+$url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path) . '&allowOverwrite=true';
+$ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_CUSTOMREQUEST => 'PUT',
-    CURLOPT_POSTFIELDS => 'test ' . date('Y-m-d H:i:s'),
+    CURLOPT_POSTFIELDS => $json,
     CURLOPT_HTTPHEADER => [
         'Authorization: Bearer ' . $token,
         'Content-Type: application/octet-stream',
@@ -54,6 +60,7 @@ curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 15,
     CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_HEADER => false,
 ]);
 $resp = curl_exec($ch);
 $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -65,6 +72,7 @@ echo "cURL error: " . var_export($curlErr, true) . "\n";
 echo "Response: " . var_export($resp, true) . "\n";
 echo "Total time: " . ($info['total_time'] ?? '?') . "\n";
 echo "Redirect count: " . ($info['redirect_count'] ?? '?') . "\n";
+echo "\nInput JSON length for this test: " . strlen($json) . "\n";
 
 echo "\n--- Blob applications.json fetch ---\n";
 $blobApps = blobFetch('applications.json');
