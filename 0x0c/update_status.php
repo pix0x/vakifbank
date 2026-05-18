@@ -17,7 +17,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Gecersiz istek metodu.'], 405);
     }
-    header('Location: index.php');
+    header('Location: /0x0c/index.php');
     exit;
 }
 
@@ -26,7 +26,7 @@ if (!validateCsrf($token)) {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Gecersiz CSRF token.'], 403);
     }
-    header('Location: index.php?type=error&msg=' . urlencode('Gecersiz CSRF token.'));
+    header('Location: /0x0c/index.php?type=error&msg=' . urlencode('Gecersiz CSRF token.'));
     exit;
 }
 
@@ -37,7 +37,7 @@ if ($id === '' || !in_array($status, APPLICATION_STATUSES, true)) {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Gecersiz durum guncelleme istegi.'], 422);
     }
-    header('Location: index.php?type=error&msg=' . urlencode('Gecersiz durum guncelleme istegi.'));
+    header('Location: /0x0c/index.php?type=error&msg=' . urlencode('Gecersiz durum guncelleme istegi.'));
     exit;
 }
 
@@ -46,7 +46,7 @@ if (!$ok) {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Basvuru bulunamadi veya guncellenemedi.'], 404);
     }
-    header('Location: index.php?type=error&msg=' . urlencode('Basvuru bulunamadi veya guncellenemedi.'));
+    header('Location: /0x0c/index.php?type=error&msg=' . urlencode('Basvuru bulunamadi veya guncellenemedi.'));
     exit;
 }
 
@@ -60,6 +60,6 @@ if ($isAjax) {
     ]);
 }
 
-header('Location: index.php?type=success&msg=' . urlencode('Durum basariyla guncellendi: ' . statusLabel($status)));
+header('Location: /0x0c/index.php?type=success&msg=' . urlencode('Durum basariyla guncellendi: ' . statusLabel($status)));
 exit;
 

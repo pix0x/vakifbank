@@ -88,36 +88,39 @@ function blobFetch(string $path): ?string
     if ($url === '') return null;
 
     $content = @file_get_contents($url);
-    return $content !== false ? $content : null;
+    if ($content !== false) return $content;
+
+    // Fallback: curl ile dene
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_FOLLOWLOCATION => true,
+    ]);
+    $content = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+
+    return ($content !== false && $http >= 200 && $http < 300) ? $content : null;
 }
 
 function blobStore(string $path, string $data): bool
 {
     $token = blobToken();
-    if ($token === '') return false;
+    $storeId = blobStoreId();
+    if ($token === '' || $storeId === '') return false;
 
-    $ch = curl_init("https://api.vercel.com/v1/blob/upload");
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode(['path' => $path, 'addRandomSuffix' => false]),
-        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
-    if ($http < 200 || $http >= 300) return false;
-
-    $result = json_decode($resp, true);
-    $url = $result['url'] ?? '';
-    if ($url === '') return false;
+    $url = "https://{$storeId}.public.blob.vercel-storage.com/{$path}";
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST => 'PUT',
         CURLOPT_POSTFIELDS => $data,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+            'x-vercel-blob-add-random-suffix: false',
+        ],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
     ]);
@@ -138,6 +141,12 @@ function readData(string $file): array
     }
     if ($data === null && is_file($file)) {
         $data = @file_get_contents($file);
+    }
+    // Blob'dan okunan veriyi local file'a yaz (instance cache)
+    if ($data !== null && !is_file($file) && $token !== '') {
+        $dir = dirname($file);
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
+        @file_put_contents($file, $data);
     }
     if ($data === null || $data === false) return [];
     $parsed = json_decode($data, true);
@@ -455,7 +464,7 @@ function loginAdmin(string $username, string $password): bool
 function requireAdmin(): void
 {
     if (!isAdminLoggedIn()) {
-        header('Location: login.php');
+        header('Location: /0x0c/login.php');
         exit;
     }
 }

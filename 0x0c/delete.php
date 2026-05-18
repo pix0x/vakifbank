@@ -17,7 +17,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Gecersiz istek metodu.'], 405);
     }
-    header('Location: index.php');
+    header('Location: /0x0c/index.php');
     exit;
 }
 
@@ -26,7 +26,7 @@ if (!validateCsrf($token)) {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Gecersiz CSRF token.'], 403);
     }
-    header('Location: index.php?type=error&msg=' . urlencode('Gecersiz CSRF token.'));
+    header('Location: /0x0c/index.php?type=error&msg=' . urlencode('Gecersiz CSRF token.'));
     exit;
 }
 
@@ -41,7 +41,7 @@ if ($mode === 'all') {
             'message' => $deleted > 0 ? 'Tum kayitlar silindi.' : 'Silinecek kayit bulunamadi.',
         ]);
     }
-    header('Location: index.php?type=success&msg=' . urlencode('Tum kayitlar silindi.'));
+    header('Location: /0x0c/index.php?type=success&msg=' . urlencode('Tum kayitlar silindi.'));
     exit;
 }
 
@@ -50,7 +50,7 @@ if ($id === '') {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Silinecek kayit kimligi eksik.'], 422);
     }
-    header('Location: index.php?type=error&msg=' . urlencode('Silinecek kayit kimligi eksik.'));
+    header('Location: /0x0c/index.php?type=error&msg=' . urlencode('Silinecek kayit kimligi eksik.'));
     exit;
 }
 
@@ -59,7 +59,7 @@ if (!$ok) {
     if ($isAjax) {
         respondJson(['ok' => false, 'error' => 'Kayit bulunamadi veya silinemedi.'], 404);
     }
-    header('Location: index.php?type=error&msg=' . urlencode('Kayit bulunamadi veya silinemedi.'));
+    header('Location: /0x0c/index.php?type=error&msg=' . urlencode('Kayit bulunamadi veya silinemedi.'));
     exit;
 }
 
@@ -72,6 +72,6 @@ if ($isAjax) {
     ]);
 }
 
-header('Location: index.php?type=success&msg=' . urlencode('Kayit silindi.'));
+header('Location: /0x0c/index.php?type=success&msg=' . urlencode('Kayit silindi.'));
 exit;
 
