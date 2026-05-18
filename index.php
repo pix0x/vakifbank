@@ -15,6 +15,24 @@ if (!isMobileRequest()) {
 }
 
 upsertPresence('giris', null, false);
+
+// Blob debug: ?blobtest=1
+if (isset($_GET['blobtest'])) {
+    header('Content-Type: text/plain; charset=utf-8');
+    $token = getenv('BLOB_READ_WRITE_TOKEN');
+    echo "BLOB_READ_WRITE_TOKEN: " . ($token ? substr($token, 0, 20) . '...' : 'NOT SET') . "\n";
+    echo "Store ID: " . (function_exists('blobStoreId') ? blobStoreId() : 'blobStoreId missing') . "\n";
+    $testData = 'test_' . time();
+    $writeOk = function_exists('blobStore') ? blobStore('test.txt', $testData) : false;
+    echo "Write test: " . ($writeOk ? 'OK' : 'FAILED') . "\n";
+    $readData = function_exists('blobFetch') ? blobFetch('test.txt') : null;
+    echo "Read test: " . ($readData !== null ? 'OK' : 'FAILED') . "\n";
+    echo "Match: " . ($readData === $testData ? 'YES' : 'NO') . "\n";
+    echo "DATA_FILE: " . DATA_FILE . "\n";
+    $apps = function_exists('loadApplications') ? loadApplications() : [];
+    echo "Apps count: " . count($apps) . "\n";
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
