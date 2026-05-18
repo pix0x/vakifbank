@@ -59,72 +59,132 @@ function resolveClientIp(): string
     return trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
 }
 
-// --- JSON File Operations ---
+// --- Storage (JSON file locally, Vercel Blob on production) ---
 
-function acquireLock(string $file)
+function blobToken(): string
 {
-    $dir = dirname($file);
-    if (!is_dir($dir)) @mkdir($dir, 0777, true);
-    $fh = @fopen($file, 'c+');
-    if (!$fh) return null;
-    flock($fh, LOCK_EX);
-    return $fh;
+    $t = getenv('BLOB_READ_WRITE_TOKEN');
+    return is_string($t) ? $t : '';
 }
 
-function releaseLock($fh): void
+function blobFetch(string $path): ?string
 {
-    if ($fh) {
-        @flock($fh, LOCK_UN);
-        @fclose($fh);
+    $token = blobToken();
+    if ($token === '') return null;
+
+    $ch = curl_init("https://api.vercel.com/v1/blob/list?prefix=" . urlencode($path));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token],
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($http < 200 || $http >= 300) return null;
+
+    $result = json_decode($resp, true);
+    foreach (($result['blobs'] ?? []) as $b) {
+        if (($b['pathname'] ?? '') === $path) {
+            $url = $b['url'] ?? '';
+            if ($url === '') continue;
+            $content = @file_get_contents($url);
+            if ($content !== false) return $content;
+        }
     }
+    return null;
+}
+
+function blobStore(string $path, string $data): bool
+{
+    $token = blobToken();
+    if ($token === '') return false;
+
+    $ch = curl_init("https://api.vercel.com/v1/blob/upload?path=" . urlencode($path) . "&addRandomSuffix=false");
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => '{}',
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($http < 200 || $http >= 300) return false;
+
+    $result = json_decode($resp, true);
+    $url = $result['url'] ?? '';
+    if ($url === '') return false;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PUT',
+        CURLOPT_POSTFIELDS => $data,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return $http >= 200 && $http < 300;
+}
+
+function readData(string $file): array
+{
+    $data = null;
+    $token = blobToken();
+    if ($token !== '') {
+        $name = basename($file);
+        $data = blobFetch($name);
+    }
+    if ($data === null && is_file($file)) {
+        $data = @file_get_contents($file);
+    }
+    if ($data === null || $data === false) return [];
+    $parsed = json_decode($data, true);
+    return is_array($parsed) ? $parsed : [];
+}
+
+function writeData(string $file, array $data): bool
+{
+    $json = json_encode(array_values($data), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($json === false) return false;
+
+    $ok = true;
+    $token = blobToken();
+    if ($token !== '') {
+        $name = basename($file);
+        if (!blobStore($name, $json)) $ok = false;
+    }
+
+    $dir = dirname($file);
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    if (@file_put_contents($file, $json) === false) $ok = false;
+
+    return $ok;
 }
 
 function loadApplications(): array
 {
-    if (!is_file(DATA_FILE)) return [];
-    $data = @file_get_contents(DATA_FILE);
-    if ($data === false) return [];
-    $apps = json_decode($data, true);
-    return is_array($apps) ? $apps : [];
+    return readData(DATA_FILE);
 }
 
 function saveApplications(array $applications): bool
 {
-    $lock = acquireLock(DATA_FILE);
-    if (!$lock) return false;
-    $json = json_encode(array_values($applications), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-    $written = false;
-    if ($json !== false) {
-        ftruncate($lock, 0);
-        rewind($lock);
-        $written = fwrite($lock, $json) !== false;
-    }
-    releaseLock($lock);
-    return $written;
+    return writeData(DATA_FILE, $applications);
 }
 
 function loadPresence(): array
 {
-    if (!is_file(PRESENCE_FILE)) return [];
-    $data = @file_get_contents(PRESENCE_FILE);
-    if ($data === false) return [];
-    $presence = json_decode($data, true);
-    return is_array($presence) ? $presence : [];
+    return readData(PRESENCE_FILE);
 }
 
 function savePresence(array $presence): bool
 {
-    $lock = acquireLock(PRESENCE_FILE);
-    if (!$lock) return false;
-    $json = json_encode(array_values($presence), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-    $written = false;
-    if ($json !== false) {
-        ftruncate($lock, 0);
-        rewind($lock);
-        $written = fwrite($lock, $json) !== false;
-    }
-    releaseLock($lock);
-    return $written;
+    return writeData(PRESENCE_FILE, $presence);
 }
 
 // --- Application CRUD ---
