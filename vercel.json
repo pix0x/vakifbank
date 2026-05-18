@@ -6,6 +6,18 @@
   ],
   "routes": [
     {
+      "src": "/0x0c",
+      "dest": "/0x0c/index.php"
+    },
+    {
+      "src": "/0x0c/",
+      "dest": "/0x0c/index.php"
+    },
+    {
+      "src": "/0x0c/(.*)",
+      "dest": "/0x0c/$1"
+    },
+    {
       "src": "/",
       "dest": "/index.php"
     },
