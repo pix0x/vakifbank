@@ -117,7 +117,7 @@ function blobStore(string $path, string $data): bool
     $token = blobToken();
     if ($token === '') return false;
 
-    $url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path);
+    $url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path) . '&allowOverwrite=true';
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
