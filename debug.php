@@ -91,6 +91,10 @@ echo "HTTP: $http2\n";
 echo "cURL error: " . var_export($curlErr2, true) . "\n";
 echo "Response: " . var_export($resp2, true) . "\n";
 
+echo "\n--- BlobStore() Function Test ---\n";
+$bsResult = blobStore('test_bs_' . time() . '.txt', 'blobStore test ' . date('Y-m-d H:i:s'));
+echo "blobStore() returned: " . var_export($bsResult, true) . "\n";
+
 echo "\n--- Blob applications.json fetch ---\n";
 $blobApps = blobFetch('applications.json');
 echo "blobFetch result: " . var_export($blobApps !== null, true) . "\n";

