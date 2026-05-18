@@ -8,7 +8,8 @@ $token = blobToken();
 $sid = blobStoreId();
 
 echo "Store ID: $sid\n";
-echo "Token prefix: " . substr($token, 0, 25) . "...\n\n";
+echo "Token prefix: " . substr($token, 0, 25) . "...\n";
+echo "PHP version: " . phpversion() . "\n\n";
 
 // Try different URL formats
 $urls = [
