@@ -44,8 +44,33 @@ if ($sid !== '') {
     }
 
     echo "\n--- Testing Blob Store (write) ---\n";
-    $testResult = blobStore('test.txt', 'hello world ' . date('Y-m-d H:i:s'));
-    echo "Blob store test: " . var_export($testResult, true) . "\n";
+    $testUrl = blobPublicUrl('test.txt');
+    echo "Target URL: $testUrl\n";
+
+    $ch = curl_init($testUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PUT',
+        CURLOPT_POSTFIELDS => 'hello world ' . date('Y-m-d H:i:s'),
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . blobToken(),
+            'Content-Type: application/json',
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_VERBOSE => true,
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    $curlErrNo = curl_errno($ch);
+    unset($ch);
+
+    echo "HTTP Status: " . var_export($http, true) . "\n";
+    echo "cURL error: " . var_export($curlErr, true) . "\n";
+    echo "cURL errno: " . var_export($curlErrNo, true) . "\n";
+    echo "Response: " . var_export($resp, true) . "\n";
+    echo "Blob store test result: " . var_export($http >= 200 && $http < 300, true) . "\n";
 
     echo "\n--- Testing Blob Fetch (test.txt - verify write) ---\n";
     $testRead = blobFetch('test.txt');
