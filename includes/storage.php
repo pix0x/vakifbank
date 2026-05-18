@@ -87,15 +87,12 @@ function blobFetch(string $path): ?string
     $url = blobPublicUrl($path);
     if ($url === '') return null;
 
-    $content = @file_get_contents($url);
-    if ($content !== false) return $content;
-
-    // Fallback: curl ile dene
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 10,
         CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
     $content = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -119,10 +116,11 @@ function blobStore(string $path, string $data): bool
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $token,
             'Content-Type: application/json',
-            'x-vercel-blob-add-random-suffix: false',
+            'x-vercel-blob-add-random-suffix: 0',
         ],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);

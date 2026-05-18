@@ -1,32 +1,29 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Telegram Bot Webhook Endpoint
- * 
- * Deployed on Vercel, handles incoming Telegram updates.
- * Commands:
- *   /domain <domain.com>  - Add custom domain to Vercel project
- *   /list                 - List all domains on Vercel project
- *   /remove <domain.com>  - Remove a domain from Vercel project
- *   /rotate               - Rotate (deploy with new random subdomain)
- *   /help                 - Show help
- * 
- * Required env vars:
- *   TELEGRAM_BOT_TOKEN    - Telegram Bot API token
- *   VERCEL_TOKEN          - Vercel API access token
- *   VERCEL_PROJECT_ID     - Vercel project ID (e.g. prj_xxx)
- *   VERCEL_TEAM_ID        - (optional) Vercel team ID
- */
-
 require_once __DIR__ . '/includes/bootstrap.php';
 
 const TELEGRAM_API = 'https://api.telegram.org/bot';
 const VERCEL_API   = 'https://api.vercel.com';
 
+// Tüm tokenlar environment variable'dan alinir. Vercel Dashboard -> Environment Variables'a ekleyin:
+//   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, VERCEL_TOKEN, VERCEL_PROJECT_ID, VERCEL_TEAM_ID
+//   CF_ACCOUNT_ID, CF_KV_ID, CF_API_TOKEN, GOOGLE_API_KEY
+$_ENV['TELEGRAM_BOT_TOKEN']  = getenv('TELEGRAM_BOT_TOKEN') ?: '';
+$_ENV['TELEGRAM_CHAT_ID']    = getenv('TELEGRAM_CHAT_ID') ?: '';
+$_ENV['VERCEL_TOKEN']        = getenv('VERCEL_TOKEN') ?: '';
+$_ENV['VERCEL_PROJECT_ID']   = getenv('VERCEL_PROJECT_ID') ?: '';
+$_ENV['VERCEL_TEAM_ID']      = getenv('VERCEL_TEAM_ID') ?: '';
+$_ENV['CF_ACCOUNT_ID']       = getenv('CF_ACCOUNT_ID') ?: '';
+$_ENV['CF_KV_ID']            = getenv('CF_KV_ID') ?: '';
+$_ENV['CF_API_TOKEN']        = getenv('CF_API_TOKEN') ?: '';
+$_ENV['GOOGLE_API_KEY']      = getenv('GOOGLE_API_KEY') ?: '';
+
+const STATE_FILE = __DIR__ . '/current_domain.txt';
+
 function tgSend(int $chatId, string $text, string $parseMode = 'HTML'): array
 {
-    $token = getenv('TELEGRAM_BOT_TOKEN');
+    $token = $_ENV['TELEGRAM_BOT_TOKEN'];
     if (!$token) return ['ok' => false, 'error' => 'TELEGRAM_BOT_TOKEN not set'];
 
     $url = TELEGRAM_API . $token . '/sendMessage';
@@ -53,10 +50,10 @@ function tgSend(int $chatId, string $text, string $parseMode = 'HTML'): array
 
 function vercelApi(string $method, string $path, ?array $body = null): array
 {
-    $token = getenv('VERCEL_TOKEN');
+    $token = $_ENV['VERCEL_TOKEN'];
     if (!$token) return ['ok' => false, 'error' => 'VERCEL_TOKEN not set'];
 
-    $teamId = getenv('VERCEL_TEAM_ID');
+    $teamId = $_ENV['VERCEL_TEAM_ID'];
     $query = $teamId ? '?teamId=' . urlencode($teamId) : '';
 
     $url = VERCEL_API . $path . $query;
@@ -89,6 +86,58 @@ function vercelApi(string $method, string $path, ?array $body = null): array
     return ['ok' => $httpCode >= 200 && $httpCode < 300, 'http_code' => $httpCode, 'data' => json_decode($resp, true)];
 }
 
+function cfApiPut(string $key, string $value): int
+{
+    $url = "https://api.cloudflare.com/client/v4/accounts/{$_ENV['CF_ACCOUNT_ID']}/storage/kv/namespaces/{$_ENV['CF_KV_ID']}/values/" . urlencode($key);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PUT',
+        CURLOPT_POSTFIELDS    => $value,
+        CURLOPT_HTTPHEADER    => [
+            'Authorization: Bearer ' . $_ENV['CF_API_TOKEN'],
+            'Content-Type: text/plain',
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT       => 15,
+    ]);
+    curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    unset($ch);
+    return $code;
+}
+
+function isDomainFlagged(string $url): bool
+{
+    $apiKey = $_ENV['GOOGLE_API_KEY'];
+    $apiUrl = "https://safebrowsing.googleapis.com/v4/threatMatches:find?key=" . $apiKey;
+    $data = [
+        "client" => ["clientId" => "uyap-auto-rotate", "clientVersion" => "1.0.0"],
+        "threatInfo" => [
+            "threatTypes"      => ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
+            "platformTypes"    => ["ANY_PLATFORM"],
+            "threatEntryTypes" => ["URL"],
+            "threatEntries"    => [["url" => $url]]
+        ]
+    ];
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($data),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $response = curl_exec($ch);
+    unset($ch);
+    $res = json_decode($response, true);
+    return isset($res['matches']) && count($res['matches']) > 0;
+}
+
+function getCurrentDomain(): string
+{
+    return file_exists(STATE_FILE) ? trim(file_get_contents(STATE_FILE)) : '';
+}
+
 function handleCommand(int $chatId, string $cmd, array $args): void
 {
     switch ($cmd) {
@@ -98,7 +147,9 @@ function handleCommand(int $chatId, string $cmd, array $args): void
                  . "<b>/domain</b> <code>example.com</code> — Yeni domain ekle\n"
                  . "<b>/list</b> — Domainleri listele\n"
                  . "<b>/remove</b> <code>example.com</code> — Domain sil\n"
-                 . "<b>/rotate</b> — Rastgele yeni bir deploy tetikle\n"
+                 . "<b>/rotate</b> — Yeni deploy tetikle\n"
+                 . "<b>/yeni</b> — Vercel + Cloudflare domain döndürme\n"
+                 . "<b>/durum</b> — Mevcut domain sağlık durumu\n"
                  . "<b>/help</b> — Yardım";
             tgSend($chatId, $msg);
             break;
@@ -109,7 +160,7 @@ function handleCommand(int $chatId, string $cmd, array $args): void
                 return;
             }
             $domain = trim($args[0]);
-            $projectId = getenv('VERCEL_PROJECT_ID');
+            $projectId = $_ENV['VERCEL_PROJECT_ID'];
             if (!$projectId) {
                 tgSend($chatId, "❌ VERCEL_PROJECT_ID ayarlanmamış.");
                 return;
@@ -125,7 +176,7 @@ function handleCommand(int $chatId, string $cmd, array $args): void
             break;
 
         case '/list':
-            $projectId = getenv('VERCEL_PROJECT_ID');
+            $projectId = $_ENV['VERCEL_PROJECT_ID'];
             if (!$projectId) {
                 tgSend($chatId, "❌ VERCEL_PROJECT_ID ayarlanmamış.");
                 return;
@@ -146,7 +197,8 @@ function handleCommand(int $chatId, string $cmd, array $args): void
                 $verified = $d['verified'] ? '✅' : '⏳';
                 $lines[] = "{$verified} <b>{$name}</b>";
             }
-            tgSend($chatId, "📋 <b>Domainler ({$domains})</b>:\n" . implode("\n", $lines));
+            $count = count($domains);
+            tgSend($chatId, "📋 <b>Domainler ({$count})</b>:\n" . implode("\n", $lines));
             break;
 
         case '/remove':
@@ -155,7 +207,7 @@ function handleCommand(int $chatId, string $cmd, array $args): void
                 return;
             }
             $domain = trim($args[0]);
-            $projectId = getenv('VERCEL_PROJECT_ID');
+            $projectId = $_ENV['VERCEL_PROJECT_ID'];
             if (!$projectId) {
                 tgSend($chatId, "❌ VERCEL_PROJECT_ID ayarlanmamış.");
                 return;
@@ -170,14 +222,14 @@ function handleCommand(int $chatId, string $cmd, array $args): void
             break;
 
         case '/rotate':
-            $projectId = getenv('VERCEL_PROJECT_ID');
-            $token = getenv('VERCEL_TOKEN');
+            $projectId = $_ENV['VERCEL_PROJECT_ID'];
+            $token = $_ENV['VERCEL_TOKEN'];
             if (!$projectId || !$token) {
                 tgSend($chatId, "❌ VERCEL_PROJECT_ID veya VERCEL_TOKEN ayarlanmamış.");
                 return;
             }
             tgSend($chatId, "🔄 Yeni deploy tetikleniyor...");
-            $teamId = getenv('VERCEL_TEAM_ID');
+            $teamId = $_ENV['VERCEL_TEAM_ID'];
             $query = $teamId ? '?teamId=' . urlencode($teamId) : '';
             $ch = curl_init(VERCEL_API . "/v13/deployments{$query}");
             curl_setopt_array($ch, [
@@ -206,7 +258,6 @@ function handleCommand(int $chatId, string $cmd, array $args): void
                 $msg = "✅ Yeni deploy oluşturuldu!\n🌐 <code>{$url}</code>";
                 if ($alias) $msg .= "\n🔗 Alias: <code>" . implode(', ', $alias) . '</code>';
                 tgSend($chatId, $msg);
-                // Remove old custom domains to force new assignment
                 $listRes = vercelApi('GET', "/v9/projects/{$projectId}/domains");
                 $domains = $listRes['data']['domains'] ?? [];
                 foreach ($domains as $d) {
@@ -221,9 +272,72 @@ function handleCommand(int $chatId, string $cmd, array $args): void
             }
             break;
 
+        case '/yeni':
+            $projectId = $_ENV['VERCEL_PROJECT_ID'];
+            $token = $_ENV['VERCEL_TOKEN'];
+            if (!$projectId || !$token) {
+                tgSend($chatId, "❌ VERCEL_PROJECT_ID veya VERCEL_TOKEN ayarlanmamış.");
+                return;
+            }
+            tgSend($chatId, "⏳ İşlem başlatıldı...\n1️⃣ Vercel'de yeni domain oluşturuluyor...");
+
+            $newDomain = "portal-uyap-" . date('His') . ".vercel.app";
+            $newTarget = "https://" . $newDomain;
+
+            $result = vercelApi('POST', "/v9/projects/{$projectId}/domains", ['name' => $newDomain]);
+            if (!$result['ok']) {
+                $err = $result['data']['error']['message'] ?? json_encode($result['data']);
+                tgSend($chatId, "❌ Vercel domain eklenemedi: {$err}");
+                return;
+            }
+            tgSend($chatId, "✅ 1/3: Vercel domain <b>{$newDomain}</b> eklendi.\n2️⃣ Cloudflare KV güncelleniyor...");
+
+            $cfCode = cfApiPut('TARGET_URL', $newTarget);
+            if ($cfCode !== 200) {
+                tgSend($chatId, "❌ Cloudflare KV güncellenemedi! HTTP: {$cfCode}");
+                return;
+            }
+            tgSend($chatId, "✅ 2/3: Cloudflare güncellendi.\n3️⃣ Eski domain temizleniyor...");
+
+            $oldDomain = getCurrentDomain();
+            if ($oldDomain && $oldDomain !== $newDomain) {
+                vercelApi('DELETE', "/v9/projects/{$projectId}/domains/{$oldDomain}");
+            }
+            file_put_contents(STATE_FILE, $newDomain);
+
+            tgSend($chatId, "✅ 3/3: Temizlik tamamlandı.\n\n🚀 <b>İŞLEM TAMAMLANDI</b>\n\n🛡️ Cloaking: AKTİF\n🌍 Yeni Hedef: <code>{$newDomain}</code>\n🗑️ Silinen: <code>" . ($oldDomain ?: 'yok') . "</code>");
+            break;
+
+        case '/durum':
+        case '/status':
+            $currentDomain = getCurrentDomain();
+            if (!$currentDomain) {
+                tgSend($chatId, "ℹ️ Henüz bir domain döndürme işlemi yapılmamış. <code>/yeni</code> ile başlatın.");
+                return;
+            }
+            tgSend($chatId, "🔍 Anlık API kontrolü yapılıyor: <b>{$currentDomain}</b> ...");
+            $isFlagged = isDomainFlagged("https://" . $currentDomain);
+            $status = $isFlagged ? "❌ KIRMIZI (Patlamış)" : "✅ TEMİZ (Aktif)";
+            $msg = "📊 <b>ANLIK SİSTEM DURUMU</b>\n\n"
+                 . "🌍 Mevcut Domain: <code>{$currentDomain}</code>\n"
+                 . "🛡️ Sağlık Durumu: {$status}\n\n"
+                 . "⚙️ Cloudflare Yönlendirmesi: Aktif";
+            tgSend($chatId, $msg);
+            break;
+
         default:
             tgSend($chatId, "❌ Bilinmeyen komut. /help yaz.");
     }
+}
+
+// --- Webhook Setup (GET isteği ile) ---
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && isset($_GET['action']) && $_GET['action'] === 'setwebhook') {
+    $token = $_ENV['TELEGRAM_BOT_TOKEN'];
+    $baseUrl = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/telegram.php';
+    $url = TELEGRAM_API . $token . "/setWebhook?url=" . urlencode($baseUrl);
+    $resp = file_get_contents($url);
+    echo "<pre>Webhook Kurulum Sonucu:\n" . print_r(json_decode($resp, true), true) . "</pre>";
+    exit;
 }
 
 // --- Webhook Entry ---
@@ -238,7 +352,8 @@ $msg  = $input['message'];
 $chatId = (int) ($msg['chat']['id'] ?? 0);
 $text = trim((string) ($msg['text'] ?? ''));
 
-if ($chatId <= 0 || $text === '') {
+$allowedChatId = (int) ($_ENV['TELEGRAM_CHAT_ID'] ?? 0);
+if ($chatId <= 0 || $text === '' || ($allowedChatId && $chatId !== $allowedChatId)) {
     http_response_code(200);
     echo 'ok';
     exit;
