@@ -46,7 +46,7 @@ function tgSend(int $chatId, string $text, string $parseMode = 'HTML'): array
     ]);
     $resp = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     return json_decode($resp, true) ?: ['ok' => false, 'http_code' => $httpCode];
 }
@@ -84,7 +84,7 @@ function vercelApi(string $method, string $path, ?array $body = null): array
     curl_setopt_array($ch, $options);
     $resp = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     return ['ok' => $httpCode >= 200 && $httpCode < 300, 'http_code' => $httpCode, 'data' => json_decode($resp, true)];
 }
@@ -197,7 +197,7 @@ function handleCommand(int $chatId, string $cmd, array $args): void
             ]);
             $resp = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            unset($ch);
             $deployData = json_decode($resp, true);
 
             if ($httpCode >= 200 && $httpCode < 300) {

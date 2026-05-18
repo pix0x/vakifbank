@@ -106,8 +106,7 @@ function blobStore(string $path, string $data): bool
     ]);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
+    unset($ch);
     if ($http < 200 || $http >= 300) return false;
 
     $result = json_decode($resp, true);
@@ -124,7 +123,7 @@ function blobStore(string $path, string $data): bool
     ]);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    unset($ch);
 
     return $http >= 200 && $http < 300;
 }
