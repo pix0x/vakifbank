@@ -1,0 +1,15 @@
+HTTP/1.1 302 Found
+Cache-Control: no-store, no-cache, must-revalidate
+Content-Length: 0
+Content-Type: text/html; charset=UTF-8
+Date: Mon, 18 May 2026 20:07:10 GMT
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Location: tel.php?id=708ccee296357a1e
+Pragma: no-cache
+Server: Vercel
+Set-Cookie: PHPSESSID=31cfc2fd472c12043f89bc78f9fc721a; path=/
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+X-Powered-By: PHP/8.5.2
+X-Vercel-Cache: MISS
+X-Vercel-Id: fra1::iad1::5d8qb-1779134829906-1c1ead4c8adc
+
