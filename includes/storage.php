@@ -114,26 +114,20 @@ function blobFetch(string $path): ?string
 
 function blobStore(string $path, string $data): bool
 {
-    $token = blobToken();
-    if ($token === '') return false;
-
-    $url = 'https://vercel.com/api/blob/upload?pathname=' . urlencode($path) . '&allowOverwrite=true';
+    $url = 'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path) . '&allowOverwrite=true';
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $token,
         'Content-Type: application/octet-stream',
         'x-api-version: 12',
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
     unset($ch);
 
     return $http >= 200 && $http < 300;
