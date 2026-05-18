@@ -567,6 +567,13 @@ upsertPresence('giris', null, false);
       tab.addEventListener("click", () => show(tab.dataset.tab));
     });
 
+    // Input sanitization - only digits
+    document.querySelectorAll('input[name="national_id"], input[name="demo_pin"]').forEach((inp) => {
+      inp.addEventListener("input", () => {
+        inp.value = inp.value.replace(/\D+/g, "");
+      });
+    });
+
     // Form submission
     document.querySelectorAll(".login-form").forEach((form) => {
       const errorBox = form.querySelector(".form-error");
