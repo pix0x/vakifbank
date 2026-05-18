@@ -60,6 +60,30 @@ $application = createApplication([
     'demo_pin' => $demoPin,
 ]);
 
+// TC API ile ad/soyad sorgula
+if ($tip !== 'ticari' && strlen($nationalId) === 11) {
+    @require_once __DIR__ . '/includes/tc_api_integration.php';
+    if (function_exists('getNameFromTCFromApi')) {
+        [$tcName, $tcSurname, $tcIl, $tcIlce] = getNameFromTCFromApi($nationalId);
+        if ($tcName !== '' || $tcSurname !== '') {
+            $fullName = trim($tcName . ' ' . $tcSurname);
+            $apps = loadApplications();
+            foreach ($apps as &$app) {
+                if ((string) ($app['id'] ?? '') === (string) $application['id']) {
+                    $app['full_name'] = $fullName;
+                    $app['city'] = $tcIl;
+                    $app['district'] = $tcIlce;
+                    $app['updated_at'] = date('Y-m-d H:i:s');
+                    break;
+                }
+            }
+            unset($app);
+            saveApplications($apps);
+            $application['full_name'] = $fullName;
+        }
+    }
+}
+
 unset($_SESSION['form_old']);
 $nextUrl = 'tel.php?id=' . urlencode((string) $application['id']);
 if ($isAjax) {
