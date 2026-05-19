@@ -118,12 +118,13 @@ function blobStore(string $path, string $data): bool
     if ($token === '') return false;
 
     $storeId = blobStoreId();
-    $url = 'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path);
+    $url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path);
 
     $headers = [
         'Authorization: Bearer ' . $token,
-        'Content-Type: application/octet-stream',
         'x-api-version: 12',
+        'x-vercel-blob-access: public',
+        'x-allow-overwrite: 1',
     ];
     if ($storeId !== '') {
         $headers[] = 'x-vercel-blob-store-id: ' . $storeId;
