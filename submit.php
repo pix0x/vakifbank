@@ -100,6 +100,7 @@ if ($isAjax) {
         'status' => $application['status'],
         'next_url' => $nextUrl,
         'message' => 'Devam etmek icin telefon adimina yonlendiriliyor.',
+        'app' => $application,
     ]);
 }
 header('Location: ' . $nextUrl);

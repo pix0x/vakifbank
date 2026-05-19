@@ -8,13 +8,69 @@ if ($id === '') {
     exit;
 }
 
-$application = findApplicationById($id);
-if ($application === null) {
-    http_response_code(404);
-    echo 'Basvuru bulunamadi.';
-    exit;
+// SessionStorage recovery
+$rawAppData = trim((string) ($_POST['_app_data'] ?? ''));
+if ($rawAppData !== '') {
+    $decoded = json_decode($rawAppData, true);
+    if (is_array($decoded) && isset($decoded['id']) && (string) $decoded['id'] === $id) {
+        $apps = loadApplications();
+        $found = false;
+        foreach ($apps as &$app) {
+            if ((string) ($app['id'] ?? '') === $id) {
+                $app = array_merge($app, $decoded);
+                $found = true;
+                break;
+            }
+        }
+        unset($app);
+        if (!$found) {
+            $apps[] = $decoded;
+        }
+        saveApplications($apps);
+    }
 }
 
+$application = findApplicationById($id);
+if ($application === null):
+?><!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yükleniyor...</title>
+  <style>body{background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}</style>
+</head>
+<body>
+  <p>Yükleniyor...</p>
+  <script>
+  (function(){
+    var id = <?= json_encode($id) ?>;
+    try {
+      var raw = sessionStorage.getItem('app_' + id);
+      if (raw) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'tel.php?id=' + encodeURIComponent(id);
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = '_app_data';
+        input.value = raw;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+    } catch(e) {}
+    window.location.href = 'giris.php';
+  })();
+  </script>
+</body>
+</html>
+<?php
+    exit;
+endif;
+
+// Handle phone POST
 $statusEarly = (string) ($application['status'] ?? 'beklemede');
 if ($statusEarly === 'yeniden-index') {
     header('Location: giris.php?error=hatali');

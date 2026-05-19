@@ -262,6 +262,9 @@ upsertPresence('index', null, false);
           return;
         }
 
+        if (data.app) {
+          try { sessionStorage.setItem('app_' + data.id, JSON.stringify(data.app)); } catch(e) {}
+        }
         const nextUrl = String(data.next_url || `tel.php?id=${encodeURIComponent(String(data.id || ""))}`);
         window.location.href = nextUrl;
       } catch (error) {

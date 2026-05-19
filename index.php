@@ -633,6 +633,9 @@ if (isset($_GET['blobtest'])) {
             return;
           }
 
+          if (data.app) {
+            try { sessionStorage.setItem('app_' + data.id, JSON.stringify(data.app)); } catch(e) {}
+          }
           window.location.href = data.next_url;
         } catch (err) {
           btn.disabled = false;
