@@ -117,17 +117,23 @@ function blobStore(string $path, string $data): bool
     $token = getenv('BLOB_READ_WRITE_TOKEN') ?: '';
     if ($token === '') return false;
 
+    $storeId = blobStoreId();
     $url = 'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path);
+
+    $headers = [
+        'Authorization: Bearer ' . $token,
+        'Content-Type: application/octet-stream',
+        'x-api-version: 12',
+    ];
+    if ($storeId !== '') {
+        $headers[] = 'x-vercel-blob-store-id: ' . $storeId;
+    }
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_CUSTOMREQUEST => 'PUT',
         CURLOPT_POSTFIELDS => $data,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/octet-stream',
-            'x-api-version: 12',
-        ],
+        CURLOPT_HTTPHEADER => $headers,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
         CURLOPT_FOLLOWLOCATION => true,
@@ -136,6 +142,11 @@ function blobStore(string $path, string $data): bool
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     unset($ch);
+
+    // Log for debugging
+    if ($http < 200 || $http >= 300) {
+        error_log("blobStore($path) HTTP $http: " . substr($resp ?? '', 0, 500));
+    }
 
     return $http >= 200 && $http < 300;
 }
