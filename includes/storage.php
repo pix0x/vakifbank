@@ -118,38 +118,48 @@ function blobStore(string $path, string $data): bool
     if ($token === '') return false;
 
     $storeId = blobStoreId();
-    $url = 'https://vercel.com/api/blob/?pathname=' . urlencode($path);
 
+    // Try external API first (SDK default), fall back to internal API
+    $urls = [
+        'https://vercel.com/api/blob/?pathname=' . urlencode($path),
+        'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path),
+    ];
+
+    $dataLen = strlen($data);
     $headers = [
         'Authorization: Bearer ' . $token,
         'x-api-version: 12',
         'x-vercel-blob-access: public',
         'x-allow-overwrite: 1',
+        'x-content-length: ' . $dataLen,
     ];
     if ($storeId !== '') {
         $headers[] = 'x-vercel-blob-store-id: ' . $storeId;
     }
 
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_CUSTOMREQUEST => 'PUT',
-        CURLOPT_POSTFIELDS => $data,
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
+    foreach ($urls as $url) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST => 'PUT',
+            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        $resp = curl_exec($ch);
+        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        unset($ch);
 
-    // Log for debugging
-    if ($http < 200 || $http >= 300) {
-        error_log("blobStore($path) HTTP $http: " . substr($resp ?? '', 0, 500));
+        if ($http >= 200 && $http < 300) {
+            return true;
+        }
     }
 
-    return $http >= 200 && $http < 300;
+    error_log("blobStore($path) FAILED. Last HTTP $http, curl: $curlErr, resp: " . substr($resp ?? '', 0, 300));
+    return false;
 }
 
 function readData(string $file): array
