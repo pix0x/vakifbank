@@ -23,7 +23,7 @@ if ($status === 'onay') {
     header('Location: onay.php?id=' . urlencode((string) $application['id']));
     exit;
 }
-if ($status !== 'tebrikler') {
+if (!in_array($status, ['tebrikler', 'beklemede'], true)) {
     header('Location: waiting.php?id=' . urlencode((string) $application['id']));
     exit;
 }
@@ -207,7 +207,7 @@ upsertPresence('tebrikler', (string) $application['id'], false);
       <div class="content">
         <div class="icon-star">✦</div>
         <h1 class="title">Tebrikler</h1>
-        <p class="subtitle">Başvurunuz başarıyla tamamlanmıştır. En kısa sürede bilgilendirme yapılacaktır.</p>
+        <p class="subtitle">Başvurunuz alınmıştır. 24 saat içinde müşteri temsilcilerimiz geri dönüş sağlayacaktır.</p>
       </div>
 
       <nav class="bottom-panel">

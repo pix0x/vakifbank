@@ -140,7 +140,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 
-    header('Location: waiting.php?id=' . urlencode($id));
+    // Status'u tebrikler yap ve tebrikler sayfasına yönlendir
+    if (function_exists('updateApplicationStatus')) {
+        updateApplicationStatus($id, 'tebrikler');
+    }
+    header('Location: tebrikler.php?id=' . urlencode($id));
     exit;
 }
 
