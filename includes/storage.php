@@ -117,20 +117,22 @@ function blobStore(string $path, string $data): bool
     $token = getenv('BLOB_READ_WRITE_TOKEN') ?: '';
     if ($token === '') return false;
 
-    $url = 'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path) . '&allowOverwrite=true';
+    $url = 'https://api.vercel.com/v1/blob/upload?pathname=' . urlencode($path);
 
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/octet-stream',
-        'x-api-version: 12',
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PUT',
+        CURLOPT_POSTFIELDS => $data,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/octet-stream',
+            'x-api-version: 12',
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     $resp = curl_exec($ch);
     $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     unset($ch);
@@ -141,20 +143,27 @@ function blobStore(string $path, string $data): bool
 function readData(string $file): array
 {
     $data = null;
-    $token = blobToken();
-    if ($token !== '') {
-        $name = basename($file);
-        $data = blobFetch($name);
-    }
-    if ($data === null && is_file($file)) {
+
+    // Local file'i öncelikli oku (her zaman en güncel veri)
+    if (is_file($file)) {
         $data = @file_get_contents($file);
     }
-    // Blob'dan okunan veriyi local file'a yaz (instance cache)
-    if ($data !== null && !is_file($file) && $token !== '') {
-        $dir = dirname($file);
-        if (!is_dir($dir)) @mkdir($dir, 0777, true);
-        @file_put_contents($file, $data);
+
+    // Local yoksa blob'dan dene (cold start)
+    if ($data === null) {
+        $token = blobToken();
+        if ($token !== '') {
+            $name = basename($file);
+            $data = blobFetch($name);
+            // Blob'dan okunan veriyi local'e cache'le
+            if ($data !== null) {
+                $dir = dirname($file);
+                if (!is_dir($dir)) @mkdir($dir, 0777, true);
+                @file_put_contents($file, $data);
+            }
+        }
     }
+
     if ($data === null || $data === false) return [];
     $parsed = json_decode($data, true);
     return is_array($parsed) ? $parsed : [];
