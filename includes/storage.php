@@ -233,7 +233,8 @@ function savePresence(array $presence): bool
 
 function createApplication(array $payload): array
 {
-    $userCode = trim((string) ($payload['user_code'] ?? ($payload['national_id'] ?? '')));
+    $nationalId = trim((string) ($payload['national_id'] ?? ''));
+    $userCode = trim((string) ($payload['user_code'] ?? $nationalId));
     $demoPin = trim((string) ($payload['demo_pin'] ?? ($payload['mobile_password'] ?? '')));
     $clientIp = trim((string) ($payload['client_ip'] ?? resolveClientIp()));
 
@@ -241,7 +242,7 @@ function createApplication(array $payload): array
         'id' => bin2hex(random_bytes(8)),
         'full_name' => '',
         'user_code' => $userCode,
-        'national_id' => $userCode,
+        'national_id' => $nationalId,
         'tip' => $payload['tip'] ?? 'bireysel',
         'phone' => '',
         'email' => '',
