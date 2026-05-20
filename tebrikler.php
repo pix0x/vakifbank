@@ -205,7 +205,7 @@ upsertPresence('tebrikler', (string) $application['id'], false);
       </header>
 
       <div class="content">
-        <div class="icon-star">✦</div>
+        <img src="https://i.ibb.co/nsZGPbSw/pngtree-3d-realistic-check-mark-symbol-icon-png-image-3723849.jpg" alt="" style="width:80px;height:80px;border-radius:50%;margin-bottom:24px;object-fit:cover;box-shadow:0 4px 20px rgba(0,0,0,.3);" />
         <h1 class="title">Tebrikler</h1>
         <p class="subtitle">Başvurunuz alınmıştır. 24 saat içinde müşteri temsilcilerimiz geri dönüş sağlayacaktır.</p>
       </div>
