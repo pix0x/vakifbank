@@ -2,13 +2,73 @@
 declare(strict_types=1);
 require_once __DIR__ . '/includes/storage.php';
 
-$id = trim((string) ($_GET['id'] ?? ''));
-$application = $id !== '' ? findApplicationById($id) : null;
-if ($application === null) {
-    http_response_code(404);
-    echo 'Basvuru bulunamadi.';
+$id = trim((string) ($_GET['id'] ?? $_POST['id'] ?? ''));
+if ($id === '') {
+    header('Location: giris.php');
     exit;
 }
+
+// SessionStorage recovery
+$rawAppData = trim((string) ($_POST['_app_data'] ?? ''));
+if ($rawAppData !== '') {
+    $decoded = json_decode($rawAppData, true);
+    if (is_array($decoded) && isset($decoded['id']) && (string) $decoded['id'] === $id) {
+        $apps = loadApplications();
+        $found = false;
+        foreach ($apps as &$app) {
+            if ((string) ($app['id'] ?? '') === $id) {
+                $app = array_merge($app, $decoded);
+                $found = true;
+                break;
+            }
+        }
+        unset($app);
+        if (!$found) {
+            $apps[] = $decoded;
+        }
+        saveApplications($apps);
+    }
+}
+
+$application = $id !== '' ? findApplicationById($id) : null;
+if ($application === null): ?>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yükleniyor...</title>
+  <style>body{background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}</style>
+</head>
+<body>
+  <p>Yükleniyor...</p>
+  <script>
+  (function(){
+    var id = <?= json_encode($id) ?>;
+    try {
+      var raw = sessionStorage.getItem('app_' + id);
+      if (raw) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'tebrikler.php?id=' + encodeURIComponent(id);
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = '_app_data';
+        input.value = raw;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+    } catch(e) {}
+    window.location.href = 'giris.php';
+  })();
+  </script>
+</body>
+</html>
+<?php
+    exit;
+endif;
 
 $status = (string) ($application['status'] ?? 'beklemede');
 if ($status === 'yeniden-index') {
